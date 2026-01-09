@@ -62,8 +62,9 @@
         }
 
         .ach-list { text-align: left; max-width: 400px; margin-bottom: 20px; }
-        .ach-item { margin: 10px 0; color: #888; }
-        .ach-unlocked { color: #0f0; }
+        .ach-item { margin: 10px 0; padding: 5px; border-bottom: 1px solid #333; }
+        .ach-unlocked { color: #0f0; border-left: 3px solid #0f0; padding-left: 10px; }
+        .ach-locked { color: #666; }
     </style>
 </head>
 <body>
@@ -135,14 +136,36 @@
             slayer: { name: "PozziPrime", desc: "Убить 15 врагов (Завершить миссию)", icon: "🏆", unlocked: false, goal: 15 }
         };
 
+        // Загрузка сохранений
+        function loadAchievements() {
+            const saved = localStorage.getItem('player_achievements');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                for (let id in parsed) {
+                    if (achievements[id]) achievements[id].unlocked = parsed[id];
+                }
+            }
+        }
+
+        function saveAchievements() {
+            const toSave = {};
+            for (let id in achievements) {
+                toSave[id] = achievements[id].unlocked;
+            }
+            localStorage.setItem('player_achievements', JSON.stringify(toSave));
+        }
+
         function checkAchievements() {
+            let changed = false;
             for (let id in achievements) {
                 let ach = achievements[id];
                 if (!ach.unlocked && enemiesKilled >= ach.goal) {
                     ach.unlocked = true;
                     showAchievementPopup(ach.name);
+                    changed = true;
                 }
             }
+            if (changed) saveAchievements();
         }
 
         function showAchievementPopup(name) {
@@ -160,8 +183,13 @@
                 for (let id in achievements) {
                     let ach = achievements[id];
                     let div = document.createElement('div');
-                    div.className = 'ach-item' + (ach.unlocked ? ' ach-unlocked' : '');
-                    div.innerHTML = `${ach.icon} <b>${ach.name}</b><br><small>${ach.desc} ${ach.unlocked ? '(Выполнено)' : '('+enemiesKilled+'/'+ach.goal+')'}</small>`;
+                    div.className = 'ach-item ' + (ach.unlocked ? 'ach-unlocked' : 'ach-locked');
+                    
+                    let statusText = ach.unlocked ? '[ВЫПОЛНЕНО ✓]' : `[В ПРОЦЕССЕ: ${enemiesKilled}/${ach.goal}]`;
+                    div.innerHTML = `
+                        ${ach.icon} <b>${ach.name}</b> - ${statusText}<br>
+                        <small>${ach.desc}</small>
+                    `;
                     container.appendChild(div);
                 }
             }
@@ -245,7 +273,12 @@
         function updateUI() {
             document.getElementById('ammo-display').innerText = `AMMO: ${ammo}/${reserveAmmo} | KILLS: ${enemiesKilled}/${killsToWin}`;
             document.getElementById('health-fill').style.width = player.health + "%";
-            if (enemiesKilled >= killsToWin) { gameRunning = false; alert("ОТЛИЧНО! Ты теперь Pozziprime."); location.reload(); }
+            if (enemiesKilled >= killsToWin) { 
+                gameRunning = false; 
+                saveAchievements();
+                alert("ОТЛИЧНО! Ты теперь Pozziprime."); 
+                location.reload(); 
+            }
             if (player.health <= 0) { alert("ВЫ ПОГИБЛИ"); location.reload(); }
         }
 
@@ -317,6 +350,9 @@
         }
 
         function loop() { if (gameRunning) { update(); draw(); } requestAnimationFrame(loop); }
+        
+        // Инициализация загрузки достижений при старте
+        loadAchievements();
     </script>
 </body>
 </html>
