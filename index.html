@@ -8,21 +8,15 @@
         body { margin: 0; background: #000; overflow: hidden; color: white; font-family: 'Courier New', Courier, monospace; touch-action: none; }
         canvas { display: block; image-rendering: pixelated; width: 100vw; height: 100vh; }
         
-        #menu, #pause-menu {
+        #menu {
             position: absolute; inset: 0; background: rgba(0,0,0,0.9);
             display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
         }
-        #pause-menu { display: none; background: rgba(0,0,0,0.7); }
-
         .btn {
-            background: #a00; color: white; border: none; padding: 15px 30px;
-            margin: 10px; font-size: 20px; cursor: pointer; font-family: inherit; transition: 0.3s;
-            width: 250px;
+            background: #a00; color: white; border: none; padding: 20px 40px;
+            margin: 10px; font-size: 24px; cursor: pointer; font-family: inherit; transition: 0.3s;
         }
         .btn:hover { background: #f00; }
-
-        .settings-row { margin: 10px; display: flex; flex-direction: column; align-items: center; }
-        input[type=range] { width: 200px; cursor: pointer; }
 
         #ui { 
             position: absolute; bottom: 20px; left: 20px; 
@@ -31,13 +25,6 @@
         #health-bar { width: 200px; height: 20px; background: #300; border: 2px solid white; margin-bottom: 5px; }
         #health-fill { width: 100%; height: 100%; background: #f00; transition: width 0.3s; }
         
-        /* Кнопка меню для мобилок */
-        #mobile-menu-btn {
-            position: absolute; top: 10px; right: 10px; width: 50px; height: 50px;
-            background: rgba(255,255,255,0.2); border: 1px solid white; color: white;
-            display: none; align-items: center; justify-content: center; z-index: 50; border-radius: 5px;
-        }
-
         #joystick-container {
             position: absolute; bottom: 40px; left: 40px;
             width: 120px; height: 120px; background: rgba(255,255,255,0.1);
@@ -66,34 +53,12 @@
 </head>
 <body>
 
-    <!-- Главное меню -->
     <div id="menu">
-        <h1>Убей фурри: Миссия зачистки</h1>
-        <p>by: Karton820</p>
+        <h1>Убей фурри: Миссия зачистки by:Karton820</h1>
+        <p>Цель: Уничтожить 15 противников</p>
         <button class="btn" onclick="startGame('pc')">ИГРАТЬ (ПК)</button>
         <button class="btn" onclick="startGame('mobile')">ИГРАТЬ (ТЕЛЕФОН)</button>
     </div>
-
-    <!-- Меню паузы -->
-    <div id="pause-menu">
-        <h2>ПАУЗА</h2>
-        <div class="settings-row">
-            <label>Громкость звуков</label>
-            <input type="range" id="vol-sound" min="0" max="1" step="0.1" value="0.5">
-        </div>
-        <div class="settings-row">
-            <label>Громкость музыки</label>
-            <input type="range" id="vol-music" min="0" max="1" step="0.1" value="0.5">
-        </div>
-        <div class="settings-row">
-            <label>Чувствительность</label>
-            <input type="range" id="sens" min="0.1" max="2.0" step="0.1" value="1.0">
-        </div>
-        <button class="btn" onclick="togglePause()">ПРОДОЛЖИТЬ</button>
-        <button class="btn" onclick="location.reload()" style="background:#555">В ГЛАВНОЕ МЕНЮ</button>
-    </div>
-
-    <div id="mobile-menu-btn" onclick="togglePause()">⚙️</div>
 
     <div id="joystick-container"><div id="joystick-stick"></div></div>
     <div id="shoot-btn">🔥</div>
@@ -112,14 +77,11 @@
         const screenWidth = 320, screenHeight = 200;
         canvas.width = screenWidth; canvas.height = screenHeight;
 
-        // Настройки
-        let settings = { volume: 0.5, music: 0.5, sens: 1.0 };
-        let isPaused = false;
-
+        // Загрузка спрайтов
         const enemySprite = new Image();
         enemySprite.src = 'furry.jpg';
         const itemSprite = new Image();
-        itemSprite.src = 'item.jpg';
+        itemSprite.src = 'item.jpg'; // Используется ваш спрайт для патронов и аптечек
 
         const map = [
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -154,19 +116,6 @@
         const keys = {};
         let lastTouchX = null;
 
-        // Обработка настроек
-        document.getElementById('vol-sound').oninput = (e) => settings.volume = e.target.value;
-        document.getElementById('vol-music').oninput = (e) => settings.music = e.target.value;
-        document.getElementById('sens').oninput = (e) => settings.sens = e.target.value;
-
-        function togglePause() {
-            if (!gameRunning) return;
-            isPaused = !isPaused;
-            document.getElementById('pause-menu').style.display = isPaused ? 'flex' : 'none';
-            if (!isPaused && !isMobile) canvas.requestPointerLock();
-            if (isPaused) document.exitPointerLock?.();
-        }
-
         function startGame(mode) {
             isMobile = mode === 'mobile';
             document.getElementById('menu').style.display = 'none';
@@ -174,16 +123,20 @@
                 document.getElementById('joystick-container').style.display = 'block';
                 document.getElementById('shoot-btn').style.display = 'flex';
                 document.getElementById('reload-btn').style.display = 'flex';
-                document.getElementById('mobile-menu-btn').style.display = 'flex';
                 setupMobileControls();
             } else {
-                canvas.onclick = () => { if(!isPaused) canvas.requestPointerLock(); }
+                canvas.onclick = () => canvas.requestPointerLock();
             }
             gameRunning = true;
             loop();
         }
 
         function setupMobileControls() {
+            const joy = document.getElementById('joystick-container');
+            const stick = document.getElementById('joystick-stick');
+            const shootBtn = document.getElementById('shoot-btn');
+            const reloadBtn = document.getElementById('reload-btn');
+
             window.addEventListener('touchstart', (e) => {
                 for(let i=0; i<e.changedTouches.length; i++) {
                     let t = e.changedTouches[i];
@@ -192,22 +145,21 @@
             }, {passive: false});
 
             window.addEventListener('touchmove', (e) => {
-                if (isPaused) return;
                 e.preventDefault();
                 for(let i=0; i<e.touches.length; i++) {
                     let t = e.touches[i];
                     if (t.clientX < window.innerWidth/2) {
-                        let rect = document.getElementById('joystick-container').getBoundingClientRect();
+                        let rect = joy.getBoundingClientRect();
                         let dx = t.clientX - (rect.left + rect.width/2);
                         let dy = t.clientY - (rect.top + rect.height/2);
                         let dist = Math.min(60, Math.hypot(dx, dy));
                         let angle = Math.atan2(dy, dx);
                         joyPos.x = (Math.cos(angle) * dist) / 60;
                         joyPos.y = (Math.sin(angle) * dist) / 60;
-                        document.getElementById('joystick-stick').style.transform = `translate(calc(-50% + ${joyPos.x*60}px), calc(-50% + ${joyPos.y*60}px))`;
+                        stick.style.transform = `translate(calc(-50% + ${joyPos.x*60}px), calc(-50% + ${joyPos.y*60}px))`;
                     } else if (lastTouchX !== null) {
                         let dx = t.clientX - lastTouchX;
-                        player.dir += dx * 0.007 * settings.sens;
+                        player.dir += dx * 0.007;
                         lastTouchX = t.clientX;
                     }
                 }
@@ -218,26 +170,25 @@
                     let t = e.changedTouches[i];
                     if (t.clientX < window.innerWidth/2) {
                         joyPos = {x:0, y:0};
-                        document.getElementById('joystick-stick').style.transform = 'translate(-50%, -50%)';
+                        stick.style.transform = 'translate(-50%, -50%)';
                     } else lastTouchX = null;
                 }
             });
 
-            document.getElementById('shoot-btn').addEventListener('touchstart', (e) => { e.preventDefault(); if(!isPaused) shoot(); });
-            document.getElementById('reload-btn').addEventListener('touchstart', (e) => { e.preventDefault(); if(!isPaused) reload(); });
+            shootBtn.addEventListener('touchstart', (e) => { e.preventDefault(); shoot(); });
+            reloadBtn.addEventListener('touchstart', (e) => { e.preventDefault(); reload(); });
         }
 
         window.addEventListener('keydown', e => {
-            if (e.code === 'Escape') togglePause();
             keys[e.code] = true;
-            if (e.code === 'KeyR' && !isPaused) reload();
+            if (e.code === 'KeyR') reload();
         });
         window.addEventListener('keyup', e => keys[e.code] = false);
-        
         window.addEventListener('mousemove', e => { 
-            if (document.pointerLockElement === canvas && !isPaused) {
-                player.dir += e.movementX * 0.003 * settings.sens; 
-            }
+            if (document.pointerLockElement === canvas) player.dir += e.movementX * 0.003; 
+        });
+        window.addEventListener('mousedown', e => {
+            if (gameRunning && !isMobile) shoot();
         });
 
         function reload() {
@@ -250,7 +201,7 @@
         }
 
         function shoot() {
-            if (ammo <= 0 || player.health <= 0 || isPaused) return;
+            if (ammo <= 0 || player.health <= 0) return;
             ammo--; 
             flash = 5;
             
@@ -265,7 +216,7 @@
                 while (angle < -Math.PI) angle += Math.PI * 2;
                 while (angle > Math.PI) angle -= Math.PI * 2;
 
-                if (Math.abs(angle) < 0.2 && dist < minDist) {
+                if (Math.abs(angle) < 0.15 && dist < minDist) {
                     if (dist < getWallDist(angle + player.dir)) {
                         minDist = dist;
                         nearestEnemy = en;
@@ -300,7 +251,7 @@
             
             if (enemiesKilled >= killsToWin) {
                 gameRunning = false;
-                alert("ОТЛИЧНО! Ты зачистил территорию.");
+                alert("ОТЛИЧНО! Ты теперь PozziPrime.");
                 location.reload();
             }
             if (player.health <= 0) {
@@ -315,7 +266,7 @@
         }
 
         function update() {
-            if (!gameRunning || isPaused) return;
+            if (!gameRunning) return;
             let mx = 0, my = 0;
 
             if (isMobile) {
@@ -335,6 +286,7 @@
             if (!isWall(player.x + mx * 2, player.y)) player.x += mx;
             if (!isWall(player.x, player.y + my * 2)) player.y += my;
 
+            // Сбор предметов
             items.forEach(item => {
                 if (!item.collected) {
                     let d = Math.hypot(player.x - item.x, player.y - item.y);
@@ -347,29 +299,83 @@
                 }
             });
 
+            // Интеллект врагов: Движение без толкучки
             enemies.forEach(en => {
                 if (!en.alive) return;
                 let dx = player.x - en.x, dy = player.y - en.y, d = Math.sqrt(dx*dx + dy*dy);
-                if (d < 0.6) { player.health -= 0.4; updateUI(); } 
-                else if (d < 8) {
-                    en.x += (dx/d)*0.018;
-                    en.y += (dy/d)*0.018;
+                
+                if (d < 0.6) { 
+                    player.health -= 0.4; 
+                    updateUI(); 
+                } else if (d < 8) {
+                    // Проверка на близость других врагов (separation)
+                    let tooClose = false;
+                    for(let other of enemies) {
+                        if (other !== en && other.alive) {
+                            let distOther = Math.hypot(en.x - other.x, en.y - other.y);
+                            if (distOther < 0.5) { tooClose = true; break; }
+                        }
+                    }
+                    
+                    // Если рядом никого нет, идем к игроку медленнее
+                    if (!tooClose) {
+                        en.x += (dx/d)*0.018;
+                        en.y += (dy/d)*0.018;
+                    } else {
+                        // Если в толпе - немного смещаемся в сторону
+                        en.x += (dy/d)*0.01;
+                        en.y -= (dx/d)*0.01;
+                    }
                 }
             });
 
-            if (Math.random() < 0.008 && enemies.filter(e=>e.alive).length < 6) {
-                let rx = Math.random() * mapW, ry = Math.random() * mapH;
-                if (!isWall(rx, ry) && Math.hypot(rx-player.x, ry-player.y) > 5) enemies.push({x: rx, y: ry, alive: true});
+            // Спавн новых врагов до достижения лимита победы
+            if (Math.random() < 0.008 && enemies.filter(e=>e.alive).length < 5) {
+                let rx = Math.random() > 0.5 ? 18 : 2;
+                let ry = Math.random() > 0.5 ? 8 : 5;
+                if (!isWall(rx, ry)) enemies.push({x: rx, y: ry, alive: true});
             }
             if (flash > 0) flash--;
         }
 
-        function draw() {
-            // Отрисовка пола и потолка
-            ctx.fillStyle = "#220033"; ctx.fillRect(0, 0, screenWidth, screenHeight/2);
-            ctx.fillStyle = "#111"; ctx.fillRect(0, screenHeight/2, screenWidth, screenHeight/2);
+        function drawSprite(x, y, type, dist, zBuffer) {
+            let dx = x - player.x, dy = y - player.y;
+            let ang = Math.atan2(dy, dx) - player.dir;
+            while (ang < -Math.PI) ang += Math.PI*2;
+            while (ang > Math.PI) ang -= Math.PI*2;
 
-            // Стены (Raycasting)
+            if (Math.abs(ang) < 1.2) {
+                let sx = (ang + 0.5) * screenWidth;
+                let h = screenHeight / dist;
+                let w = h;
+                let screenX = Math.floor(sx);
+                if (dist > 0.2 && screenX >= 0 && screenX < screenWidth && zBuffer[screenX] > dist) {
+                    if (type === 'enemy') {
+                        try { ctx.drawImage(enemySprite, sx - w/2, screenHeight/2 - h/2, w, h); }
+                        catch(e) { ctx.fillStyle = 'red'; ctx.fillRect(sx - w/2, screenHeight/2 - h/2, w, h); }
+                    } else {
+                        // Рисуем ваш спрайт для предметов
+                        try { 
+                            let itemW = w/2;
+                            ctx.drawImage(itemSprite, sx - itemW/2, screenHeight/2 + h/4, itemW, itemW); 
+                        } catch(e) { 
+                            ctx.fillStyle = (type === 'medkit') ? '#0f0' : '#ff0';
+                            ctx.fillRect(sx - w/4, screenHeight/2 + h/4, w/2, h/4);
+                        }
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            let skyGrd = ctx.createLinearGradient(0, 0, 0, screenHeight/2);
+            skyGrd.addColorStop(0, "#000511");
+            skyGrd.addColorStop(1, "#220033");
+            ctx.fillStyle = skyGrd;
+            ctx.fillRect(0,0,screenWidth,screenHeight/2);
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0,screenHeight/2,screenWidth,screenHeight/2);
+
             for (let i = 0; i < screenWidth; i++) {
                 let angle = (player.dir - 0.5) + (i / screenWidth);
                 let d = 0, hit = 0, step = 0.05;
@@ -383,40 +389,34 @@
                 zBuffer[i] = d * Math.cos(angle - player.dir);
                 let h = screenHeight / zBuffer[i];
                 let c = 180 / (1 + d * 0.25);
-                ctx.fillStyle = (hit === 1) ? `rgb(${c}, ${c*0.2}, ${c*0.2})` : `rgb(${c*0.3}, ${c*0.3}, ${c*0.8})`;
+                if (hit === 1) ctx.fillStyle = `rgb(${c}, ${c*0.3}, ${c*0.3})`;
+                else if (hit === 2) ctx.fillStyle = `rgb(${c*0.4}, ${c*0.4}, ${c*0.8})`;
                 ctx.fillRect(i, screenHeight/2 - h/2, 1, h);
             }
 
-            // Спрайты (Враги и предметы)
             let sprites = [];
             enemies.forEach(e => { if(e.alive) sprites.push({...e, type: 'enemy'})});
             items.forEach(it => { if(!it.collected) sprites.push({...it, type: it.type})});
             
-            sprites.sort((a, b) => Math.hypot(b.x - player.x, b.y - player.y) - Math.hypot(a.x - player.x, a.y - player.y));
-
-            sprites.forEach(s => {
-                let dx = s.x - player.x, dy = s.y - player.y;
-                let dist = Math.hypot(dx, dy);
-                let angle = Math.atan2(dy, dx) - player.dir;
-                while (angle < -Math.PI) angle += Math.PI*2;
-                while (angle > Math.PI) angle -= Math.PI*2;
-
-                if (Math.abs(angle) < 1.2) {
-                    let sx = (angle + 0.5) * screenWidth;
-                    let h = screenHeight / dist;
-                    if (dist > 0.2 && sx > -h && sx < screenWidth + h && zBuffer[Math.floor(sx) || 0] > dist) {
-                        if (s.type === 'enemy') ctx.drawImage(enemySprite, sx - h/2, screenHeight/2 - h/2, h, h);
-                        else ctx.drawImage(itemSprite, sx - h/4, screenHeight/2 + h/4, h/2, h/2);
-                    }
-                }
+            sprites.sort((a, b) => {
+                let da = Math.hypot(a.x - player.x, a.y - player.y);
+                let db = Math.hypot(b.x - player.x, b.y - player.y);
+                return db - da;
             });
 
-            if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash*0.1})`; ctx.fillRect(0,0,screenWidth,screenHeight); }
-            if (isPaused) { ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(0,0,screenWidth,screenHeight); }
+            sprites.forEach(s => {
+                let d = Math.hypot(s.x - player.x, s.y - player.y);
+                drawSprite(s.x, s.y, s.type, d, zBuffer);
+            });
+
+            if (flash > 0) {
+                ctx.fillStyle = `rgba(255,255,200,${flash*0.1})`;
+                ctx.fillRect(0,0,screenWidth,screenHeight);
+            }
         }
 
         function loop() {
-            update(); draw();
+            if (gameRunning) { update(); draw(); }
             requestAnimationFrame(loop);
         }
     </script>
