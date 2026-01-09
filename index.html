@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Retro Raycaster - Improved</title>
+    <title>Retro Raycaster - Mobile Improved</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; background: #000; overflow: hidden; color: white; font-family: 'Courier New', Courier, monospace; touch-action: none; }
@@ -36,13 +36,14 @@
             border-radius: 50%; transform: translate(-50%, -50%);
         }
 
-        #shoot-btn {
-            position: absolute; bottom: 40px; right: 40px;
-            width: 100px; height: 100px; border-radius: 50%; 
+        #shoot-btn, #reload-btn {
+            position: absolute; border-radius: 50%; 
             background: rgba(255,0,0,0.5); border: 4px solid white;
             display: none; align-items: center; justify-content: center;
-            font-size: 40px; user-select: none; z-index: 20;
+            user-select: none; z-index: 20; touch-action: none;
         }
+        #shoot-btn { bottom: 40px; right: 40px; width: 100px; height: 100px; font-size: 40px; }
+        #reload-btn { bottom: 150px; right: 55px; width: 70px; height: 70px; font-size: 25px; background: rgba(0,100,255,0.5); }
 
         #crosshair { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
@@ -53,13 +54,14 @@
 <body>
 
     <div id="menu">
-        <h1>Убей фурри by:Karton820 (TiktTok)</h1>
+        <h1>Убей фурри by:Karton820 (TiktTok)<</h1>
         <button class="btn" onclick="startGame('pc')">ИГРАТЬ (ПК: WASD + Мышь)</button>
         <button class="btn" onclick="startGame('mobile')">ИГРАТЬ (ТЕЛЕФОН)</button>
     </div>
 
     <div id="joystick-container"><div id="joystick-stick"></div></div>
     <div id="shoot-btn">🔥</div>
+    <div id="reload-btn">🔄</div>
 
     <canvas id="screen"></canvas>
     <div id="crosshair">+</div>
@@ -74,7 +76,6 @@
         const screenWidth = 320, screenHeight = 200;
         canvas.width = screenWidth; canvas.height = screenHeight;
 
-        // Загрузка спрайта врага
         const enemySprite = new Image();
         enemySprite.src = 'furry.jpg';
 
@@ -89,11 +90,14 @@
         ];
 
         let player = { x: 2, y: 2, dir: 0, speed: 0.07, health: 100 };
-        let joyPos = { x: 0, y: 0 }, isTouchingJoy = false;
+        let joyPos = { x: 0, y: 0 };
         let ammo = 10, reserveAmmo = 30, gameRunning = false, isMobile = false;
         let enemies = [], flash = 0;
         let zBuffer = new Array(screenWidth);
         const keys = {};
+
+        // Для сенсорного поворота
+        let lastTouchX = null;
 
         function startGame(mode) {
             isMobile = mode === 'mobile';
@@ -101,6 +105,7 @@
             if (isMobile) {
                 document.getElementById('joystick-container').style.display = 'block';
                 document.getElementById('shoot-btn').style.display = 'flex';
+                document.getElementById('reload-btn').style.display = 'flex';
                 setupMobileControls();
             } else {
                 canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
@@ -114,34 +119,64 @@
             const joy = document.getElementById('joystick-container');
             const stick = document.getElementById('joystick-stick');
             const shootBtn = document.getElementById('shoot-btn');
+            const reloadBtn = document.getElementById('reload-btn');
 
-            joy.ontouchstart = (e) => { isTouchingJoy = true; };
+            window.addEventListener('touchstart', (e) => {
+                for(let i=0; i<e.changedTouches.length; i++) {
+                    let t = e.changedTouches[i];
+                    if (t.clientX > window.innerWidth / 2) {
+                        lastTouchX = t.clientX;
+                    }
+                }
+            }, {passive: false});
+
             window.addEventListener('touchmove', (e) => {
+                e.preventDefault();
                 let touches = e.touches;
                 for(let i=0; i<touches.length; i++) {
-                    if (touches[i].clientX < window.innerWidth/2) {
+                    let t = touches[i];
+                    // Левая часть - Джойстик
+                    if (t.clientX < window.innerWidth/2) {
                         let rect = joy.getBoundingClientRect();
-                        let dx = touches[i].clientX - (rect.left + rect.width/2);
-                        let dy = touches[i].clientY - (rect.top + rect.height/2);
+                        let dx = t.clientX - (rect.left + rect.width/2);
+                        let dy = t.clientY - (rect.top + rect.height/2);
                         let dist = Math.min(60, Math.hypot(dx, dy));
                         let angle = Math.atan2(dy, dx);
                         joyPos.x = (Math.cos(angle) * dist) / 60;
                         joyPos.y = (Math.sin(angle) * dist) / 60;
                         stick.style.transform = `translate(calc(-50% + ${joyPos.x*60}px), calc(-50% + ${joyPos.y*60}px))`;
+                    } 
+                    // Правая часть - Поворот камеры
+                    else {
+                        if (lastTouchX !== null) {
+                            let dx = t.clientX - lastTouchX;
+                            player.dir += dx * 0.007;
+                            lastTouchX = t.clientX;
+                        }
+                    }
+                }
+            }, {passive: false});
+
+            window.addEventListener('touchend', (e) => {
+                for(let i=0; i<e.changedTouches.length; i++) {
+                    let t = e.changedTouches[i];
+                    if (t.clientX < window.innerWidth/2) {
+                        joyPos = {x:0, y:0};
+                        stick.style.transform = 'translate(-50%, -50%)';
                     } else {
-                        if (touches[i].lastX) player.dir += (touches[i].clientX - touches[i].lastX) * 0.01;
-                        touches[i].lastX = touches[i].clientX;
+                        lastTouchX = null;
                     }
                 }
             });
-            window.addEventListener('touchend', () => { 
-                isTouchingJoy = false; joyPos = {x:0, y:0}; 
-                stick.style.transform = 'translate(-50%, -50%)';
-            });
-            shootBtn.ontouchstart = (e) => { e.preventDefault(); shoot(); };
+
+            shootBtn.addEventListener('touchstart', (e) => { e.preventDefault(); shoot(); });
+            reloadBtn.addEventListener('touchstart', (e) => { e.preventDefault(); reload(); });
         }
 
-        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if (e.code === 'KeyR') reload();
+        });
         window.addEventListener('keyup', e => keys[e.code] = false);
         window.addEventListener('mousemove', e => { 
             if (document.pointerLockElement === canvas) player.dir += e.movementX * 0.003; 
@@ -149,6 +184,15 @@
         window.addEventListener('mousedown', e => {
             if (gameRunning && !isMobile) shoot();
         });
+
+        function reload() {
+            if (ammo === 10 || reserveAmmo <= 0) return;
+            let needed = 10 - ammo;
+            let toReload = Math.min(needed, reserveAmmo);
+            ammo += toReload;
+            reserveAmmo -= toReload;
+            updateUI();
+        }
 
         function shoot() {
             if (ammo <= 0 || player.health <= 0) return;
@@ -164,7 +208,6 @@
                 let dist = Math.sqrt(dx*dx + dy*dy);
                 if (en.alive && Math.abs(angle) < 0.2 && dist < 10) {
                     en.alive = false;
-                    if (ammo < 10) ammo += 1;
                 }
             });
         }
@@ -237,22 +280,17 @@
                     let testX = player.x + Math.cos(angle)*d;
                     let testY = player.y + Math.sin(angle)*d;
                     if (testX < 0 || testX >= 15 || testY < 0 || testY >= 7) { hit = 1; d = 15; }
-                    else {
-                        hit = map[Math.floor(testY)][Math.floor(testX)];
-                    }
+                    else { hit = map[Math.floor(testY)][Math.floor(testX)]; }
                 }
                 
                 zBuffer[i] = d * Math.cos(angle - player.dir);
                 let h = screenHeight / zBuffer[i];
-                
                 let color = 150 / (1 + d * 0.2); 
                 if (hit === 1) ctx.fillStyle = `rgb(${color}, ${color*0.2}, ${color*0.2})`; 
                 else if (hit === 2) ctx.fillStyle = `rgb(${color*0.2}, ${color*0.8}, ${color})`; 
-                
                 ctx.fillRect(i, screenHeight/2 - h/2, 1, h);
             }
 
-            // Рендер врагов с использованием картинки furry.jpg
             enemies.sort((a, b) => {
                 let distA = Math.hypot(a.x - player.x, a.y - player.y);
                 let distB = Math.hypot(b.x - player.x, b.y - player.y);
@@ -269,14 +307,12 @@
                 if (Math.abs(ang) < 1) {
                     let sx = (ang + 0.5) * screenWidth;
                     let h = screenHeight / dist;
-                    let w = h; // Квадратный спрайт
-                    
+                    let w = h;
                     let screenX = Math.floor(sx);
                     if (dist > 0.2 && screenX >= 0 && screenX < screenWidth && zBuffer[screenX] > dist) {
                         try {
                             ctx.drawImage(enemySprite, sx - w/2, screenHeight/2 - h/2, w, h);
                         } catch (e) {
-                            // Если картинка не грузится, рисуем квадрат
                             ctx.fillStyle = 'white';
                             ctx.fillRect(sx - w/2, screenHeight/2 - h/2, w, h);
                         }
@@ -299,6 +335,4 @@
         }
     </script>
 </body>
-
 </html>
-
