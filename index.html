@@ -17,6 +17,11 @@
             margin: 10px; font-size: 24px; cursor: pointer; font-family: inherit; transition: 0.3s;
         }
         .btn:hover { background: #f00; }
+        
+        .btn-support {
+            background: #444; font-size: 18px; padding: 10px 20px;
+        }
+        .btn-support:hover { background: #666; }
 
         #ui { 
             position: absolute; bottom: 20px; left: 20px; 
@@ -58,6 +63,7 @@
         <p>Цель: Уничтожить 15 противников</p>
         <button class="btn" onclick="startGame('pc')">ИГРАТЬ (ПК)</button>
         <button class="btn" onclick="startGame('mobile')">ИГРАТЬ (ТЕЛЕФОН)</button>
+        <button class="btn btn-support" onclick="window.open('https://www.donationalerts.com/r/karton820', '_blank')">Поддержать автора</button>
     </div>
 
     <div id="joystick-container"><div id="joystick-stick"></div></div>
