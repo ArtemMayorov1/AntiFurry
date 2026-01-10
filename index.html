@@ -142,7 +142,6 @@
         const enemySprite = new Image(); enemySprite.src = 'furry.png';
         const itemSprite = new Image(); itemSprite.src = 'item.jpg';
 
-        // Звук стрельбы
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playShootSound() {
             if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -178,45 +177,71 @@
         ];
         
         let currentWepIdx = 0, ammo = 10, reserveAmmo = 60, shotsInMag = 0;
-        let player = { x: 2, y: 2, dir: 0, speed: 0.07, health: 100 };
+        let player = { x: 2, y: 2, dir: 0, speed: 0.15, health: 100 };
         let gameRunning = false, isMobile = false, enemiesKilled = 0, timeLeft = 180;
         const killsToWin = 15;
         
         let enemies = [], items = [], deadBodies = [], particles = [], flash = 0, itemsCollectedCount = 0;
         let zBuffer = new Array(screenWidth), keys = {}, lastTouchX = null, joyPos = { x: 0, y: 0 };
         
-        // Переменные для отслеживания ачивок
-        let killsWithoutDamage = 0;
-        let killsInMag = 0;
-        let pacifistTimer = 0;
-        let medkitStreak = 0;
+        let killsWithoutDamage = 0, killsInMag = 0, pacifistTimer = 0, medkitStreak = 0, gamesPlayed = 0;
 
         let achievements = {
             k1: { name: "Первая кровь", desc: "Убить 1 фурри", icon: "💀", goal: 1, current: 0, unlocked: false },
             k10: { name: "Охотник", desc: "Убить 10 фурри", icon: "🏹", goal: 10, current: 0, unlocked: false },
-            k50: { name: "Мясник", desc: "Убить 50 фурри", icon: "⚔️", goal: 50, current: 0, unlocked: false },
+            k25: { name: "Истребитель", desc: "Убить 25 фурри", icon: "⚔️", goal: 25, current: 0, unlocked: false },
+            k50: { name: "Мясник", desc: "Убить 50 фурри", icon: "🩸", goal: 50, current: 0, unlocked: false },
+            k75: { name: "Палач", desc: "Убить 75 фурри", icon: "👿", goal: 75, current: 0, unlocked: false },
+            k100: { name: "Мастер смерти", desc: "Убить 100 фурри", icon: "🔥", goal: 100, current: 0, unlocked: false },
+            k250: { name: "Легенда пустошей", desc: "Убить 250 фурри", icon: "👑", goal: 250, current: 0, unlocked: false },
+            k500: { name: "Геноцид", desc: "Убить 500 фурри", icon: "☢️", goal: 500, current: 0, unlocked: false },
+            k1000: { name: "Бог Войны", desc: "Убить 1000 фурри", icon: "☄️", goal: 1000, current: 0, unlocked: false },
             win1: { name: "Выживший", desc: "Пройти игру 1 раз", icon: "🏆", goal: 1, current: 0, unlocked: false },
-            win5: { name: "Чемпион", desc: "Пройти игру 5 раз", icon: "🥇", goal: 5, current: 0, unlocked: false },
+            win5: { name: "Ветеран", desc: "Пройти игру 5 раз", icon: "🥇", goal: 5, current: 0, unlocked: false },
+            win10: { name: "Профессионал", desc: "Пройти игру 10 раз", icon: "🎖️", goal: 10, current: 0, unlocked: false },
+            win25: { name: "Неудержимый", desc: "Пройти игру 25 раз", icon: "💎", goal: 25, current: 0, unlocked: false },
+            win50: { name: "Гроссмейстер", desc: "Пройти игру 50 раз", icon: "🌌", goal: 50, current: 0, unlocked: false },
             fast: { name: "Спидраннер", desc: "Убить фурри в первые 5 секунд", icon: "⚡", goal: 1, current: 0, unlocked: false },
-            no_dmg: { name: "Неприкасаемый", desc: "Убить 5 фурри, не получая урона", icon: "🛡️", goal: 5, current: 0, unlocked: false },
-            low_hp: { name: "На волоске", desc: "Убить врага, имея меньше 10% здоровья", icon: "🩸", goal: 1, current: 0, unlocked: false },
+            fast_3s: { name: "Реакция мангуста", desc: "Убить фурри в первые 3 секунды", icon: "🌩️", goal: 1, current: 0, unlocked: false },
+            fast_win: { name: "Молниеносный", desc: "Победить менее чем за 60 секунд", icon: "⏱️", goal: 1, current: 0, unlocked: false },
+            no_dmg: { name: "Неприкасаемый", desc: "Убить 5 фурри подряд без урона", icon: "🛡️", goal: 5, current: 0, unlocked: false },
+            no_dmg_10: { name: "Призрак", desc: "Убить 10 фурри подряд без урона", icon: "👻", goal: 10, current: 0, unlocked: false },
+            no_dmg_15: { name: "Тень", desc: "Убить 15 фурри подряд без урона", icon: "🕶️", goal: 15, current: 0, unlocked: false },
+            low_hp: { name: "На волоске", desc: "Убить врага, имея меньше 10% здоровья", icon: "🩹", goal: 1, current: 0, unlocked: false },
+            low_hp_5: { name: "У края бездны", desc: "Убить врага, имея меньше 5% здоровья", icon: "💀", goal: 1, current: 0, unlocked: false },
             empty: { name: "До последнего", desc: "Выстрелить всю обойму", icon: "🔫", goal: 1, current: 0, unlocked: false },
+            trigger_happy: { name: "Гатлинг", desc: "Опустошить 10 магазинов", icon: "💥", goal: 10, current: 0, unlocked: false },
             pistol_fan: { name: "Классика", desc: "Победить с пистолетом", icon: "🎯", goal: 1, current: 0, unlocked: false },
+            shotgun_fan: { name: "Дробовик-шоу", desc: "Победить с дробовиком", icon: "📢", goal: 1, current: 0, unlocked: false },
+            rifle_fan: { name: "Свинцовый дождь", desc: "Победить с автоматом", icon: "🌧️", goal: 1, current: 0, unlocked: false },
             rich: { name: "Запасливый", desc: "Собрать 100 патронов", icon: "📦", goal: 100, current: 0, unlocked: false },
-            medic: { name: "Врачу, исцелися сам", desc: "Использовать аптечку при 100 HP", icon: "💊", goal: 1, current: 0, unlocked: false },
+            rich_500: { name: "Снабженец", desc: "Собрать 500 патронов", icon: "🚚", goal: 500, current: 0, unlocked: false },
+            rich_1000: { name: "Арсенал", desc: "Собрать 1000 патронов", icon: "🏦", goal: 1000, current: 0, unlocked: false },
+            medic_waste: { name: "Ипохондрик", desc: "Использовать аптечку при 100 HP", icon: "💊", goal: 1, current: 0, unlocked: false },
+            medic: { name: "Полевой врач", desc: "Использовать 1 аптечку", icon: "🏥", goal: 1, current: 0, unlocked: false },
+            medic_10: { name: "Хирург", desc: "Использовать 10 аптечек", icon: "👨‍⚕️", goal: 10, current: 0, unlocked: false },
+            medic_50: { name: "Бессмертный", desc: "Использовать 50 аптечек", icon: "🧛", goal: 50, current: 0, unlocked: false },
             explorer: { name: "Турист", desc: "Пройти 500 шагов", icon: "👣", goal: 500, current: 0, unlocked: false },
+            marathon: { name: "Марафонец", desc: "Пройти 5000 шагов", icon: "🏃", goal: 5000, current: 0, unlocked: false },
+            nomad: { name: "Странник", desc: "Пройти 10000 шагов", icon: "🗺️", goal: 10000, current: 0, unlocked: false },
             ninja: { name: "Ниндзя", desc: "Подойти к врагу вплотную", icon: "👤", goal: 1, current: 0, unlocked: false },
-            terminator: { name: "Терминатор", desc: "100 убийств за всё время", icon: "🦾", goal: 100, current: 0, unlocked: false },
-            pacifist: { name: "Пацифист?", desc: "Продержаться 30 секунд без выстрелов", icon: "🕊️", goal: 30, current: 0, unlocked: false },
-            lucky: { name: "Везунчик", desc: "Найти 3 аптечки подряд", icon: "🍀", goal: 3, current: 0, unlocked: false },
+            assassin: { name: "Ассасин", desc: "Убить 5 врагов вплотную", icon: "🗡️", goal: 5, current: 0, unlocked: false },
             sniper: { name: "Снайпер", desc: "Убить врага на макс. дистанции", icon: "👁️", goal: 1, current: 0, unlocked: false },
-            collector: { name: "Коллекционер", desc: "Собрать 10 предметов за игру", icon: "💎", goal: 10, current: 0, unlocked: false },
-            god: { name: "ПОЗЗИ ПРАЙМ", desc: "Выполнить 15 убийств без перезарядки", icon: "🌟", goal: 15, current: 0, unlocked: false }
+            deadeye: { name: "Зоркий глаз", desc: "5 убийств на макс. дистанции", icon: "🔭", goal: 5, current: 0, unlocked: false },
+            collector: { name: "Коллекционер", desc: "Собрать 10 предметов", icon: "💎", goal: 10, current: 0, unlocked: false },
+            scavenger: { name: "Мусорщик", desc: "Собрать 50 предметов", icon: "🧹", goal: 50, current: 0, unlocked: false },
+            artifact: { name: "Искатель", desc: "Собрать 100 предметов", icon: "🏺", goal: 100, current: 0, unlocked: false },
+            pacifist: { name: "Пацифист?", desc: "30 сек. без выстрелов в бою", icon: "🕊️", goal: 30, current: 0, unlocked: false },
+            true_pacifist: { name: "Миротворец", desc: "60 сек. без выстрелов в бою", icon: "🤝", goal: 60, current: 0, unlocked: false },
+            god: { name: "ПОЗЗИ ПРАЙМ", desc: "15 убийств без перезарядки", icon: "🌟", goal: 15, current: 0, unlocked: false },
+            lucky: { name: "Везунчик", desc: "Найти 3 аптечки подряд", icon: "🍀", goal: 3, current: 0, unlocked: false },
+            reloader: { name: "Мастер затвора", desc: "Перезарядиться 100 раз", icon: "🔄", goal: 100, current: 0, unlocked: false },
+            persistence: { name: "Упорство", desc: "Сыграть 10 игр", icon: "🎮", goal: 10, current: 0, unlocked: false }
         };
 
-        function saveAch() { localStorage.setItem('kf_ach_v2', JSON.stringify(achievements)); }
+        function saveAch() { localStorage.setItem('kf_ach_v3_50', JSON.stringify(achievements)); }
         function loadAch() {
-            let s = localStorage.getItem('kf_ach_v2');
+            let s = localStorage.getItem('kf_ach_v3_50');
             if(s) {
                 let p = JSON.parse(s);
                 for(let k in p) if(achievements[k]) { 
@@ -235,17 +260,20 @@
                 n.innerHTML = `🏆 ДОСТИЖЕНИЕ:<br>${a.name}`;
                 n.style.display = 'block';
                 setTimeout(() => n.style.display = 'none', 3000);
-                saveAch();
             }
+            saveAch();
         }
 
         function startGame(mode) {
             isMobile = mode === 'mobile';
             showScreen('none');
-            player = { x: 2, y: 2, dir: 0, speed: 0.07, health: 100 };
+            player = { x: 2, y: 2, dir: 0, speed: 0.15, health: 100 };
             enemies = []; items = []; deadBodies = []; particles = [];
             enemiesKilled = 0; timeLeft = 180; shotsInMag = 0; itemsCollectedCount = 0;
             killsWithoutDamage = 0; pacifistTimer = 0; killsInMag = 0; medkitStreak = 0;
+            
+            achievements.persistence.current++; unlockAch('persistence');
+
             if(isMobile) {
                 document.getElementById('joystick-container').style.display = 'block';
                 document.getElementById('shoot-btn').style.display = 'flex';
@@ -261,10 +289,13 @@
             if (ammo <= 0 || player.health <= 0 || !gameRunning) return;
             playShootSound();
             ammo--; shotsInMag++;
-            pacifistTimer = 0; // Сброс таймера пацифиста
+            pacifistTimer = 0;
             flash = 5;
             
-            if(ammo === 0) { achievements.empty.current = 1; unlockAch('empty'); }
+            if(ammo === 0) { 
+                achievements.empty.current = 1; unlockAch('empty'); 
+                achievements.trigger_happy.current++; unlockAch('trigger_happy');
+            }
 
             let wep = weaponTypes[currentWepIdx];
             enemies.forEach(en => {
@@ -279,13 +310,12 @@
                     killsWithoutDamage++;
                     killsInMag++;
 
-                    // Ачивка: Спидраннер (в первые 5 сек после старта)
                     if(timeLeft > 175) { achievements.fast.current = 1; unlockAch('fast'); }
+                    if(timeLeft > 177) { achievements.fast_3s.current = 1; unlockAch('fast_3s'); }
                     
-                    // Ачивка: Неприкасаемый
                     achievements.no_dmg.current = killsWithoutDamage; unlockAch('no_dmg');
-
-                    // Ачивка: Поззи Прайм (без перезарядки)
+                    achievements.no_dmg_10.current = killsWithoutDamage; unlockAch('no_dmg_10');
+                    achievements.no_dmg_15.current = killsWithoutDamage; unlockAch('no_dmg_15');
                     achievements.god.current = killsInMag; unlockAch('god');
 
                     for(let i=0; i<8; i++) {
@@ -297,12 +327,18 @@
                     }
                     deadBodies.push({x: en.x, y: en.y, opacity: 1});
                     
-                    achievements.k1.current++; unlockAch('k1');
-                    achievements.k10.current = enemiesKilled; unlockAch('k10');
-                    achievements.k50.current++; unlockAch('k50');
-                    achievements.terminator.current++; unlockAch('terminator');
+                    // Kill achievements
+                    const k_ids = ['k1','k10','k25','k50','k75','k100','k250','k500','k1000'];
+                    k_ids.forEach(id => { achievements[id].current++; unlockAch(id); });
+
                     if(player.health < 10) { achievements.low_hp.current = 1; unlockAch('low_hp'); }
-                    if(dist > 7) { achievements.sniper.current = 1; unlockAch('sniper'); }
+                    if(player.health < 5) { achievements.low_hp_5.current = 1; unlockAch('low_hp_5'); }
+                    
+                    if(dist > 7.5) { 
+                        achievements.sniper.current = 1; unlockAch('sniper'); 
+                        achievements.deadeye.current++; unlockAch('deadeye');
+                    }
+                    if(dist < 1.2) { achievements.assassin.current++; unlockAch('assassin'); }
                     
                     if (Math.random() > 0.5) {
                         items.push({
@@ -321,10 +357,9 @@
             if (!gameRunning) return;
             if (timeLeft > 0) timeLeft -= 1/60;
 
-            // Ачивка: Пацифист
             pacifistTimer += 1/60;
-            achievements.pacifist.current = pacifistTimer;
-            unlockAch('pacifist');
+            achievements.pacifist.current = pacifistTimer; unlockAch('pacifist');
+            achievements.true_pacifist.current = pacifistTimer; unlockAch('true_pacifist');
 
             let mx = 0, my = 0;
             if (isMobile) {
@@ -341,7 +376,11 @@
             if (map[Math.floor(player.y)][Math.floor(player.x + mx*2)] === 0) player.x += mx;
             if (map[Math.floor(player.y + my*2)][Math.floor(player.x)] === 0) player.y += my;
             
-            if(mx !== 0 || my !== 0) { achievements.explorer.current += 0.1; unlockAch('explorer'); }
+            if(mx !== 0 || my !== 0) { 
+                achievements.explorer.current += 0.5; unlockAch('explorer'); 
+                achievements.marathon.current += 0.5; unlockAch('marathon'); 
+                achievements.nomad.current += 0.5; unlockAch('nomad'); 
+            }
 
             items.forEach(it => {
                 if(!it.collected) {
@@ -349,21 +388,26 @@
                     if(d < 0.5) {
                         it.collected = true;
                         itemsCollectedCount++;
-                        achievements.collector.current = itemsCollectedCount;
-                        unlockAch('collector');
+                        achievements.collector.current++; unlockAch('collector');
+                        achievements.scavenger.current++; unlockAch('scavenger');
+                        achievements.artifact.current++; unlockAch('artifact');
                         
                         if(it.type === 'medkit') {
                             medkitStreak++;
                             achievements.lucky.current = medkitStreak; unlockAch('lucky');
-                            if(player.health >= 100) { achievements.medic.current = 1; unlockAch('medic'); }
+                            if(player.health >= 100) { achievements.medic_waste.current = 1; unlockAch('medic_waste'); }
                             player.health = Math.min(100, player.health + 30);
+                            achievements.medic.current++; unlockAch('medic');
+                            achievements.medic_10.current++; unlockAch('medic_10');
+                            achievements.medic_50.current++; unlockAch('medic_50');
                         } else {
-                            medkitStreak = 0; // Сброс серии аптечек
+                            medkitStreak = 0; 
                             let add = weaponTypes[currentWepIdx].pack;
                             reserveAmmo += add;
                             achievements.rich.current += add; unlockAch('rich');
+                            achievements.rich_500.current += add; unlockAch('rich_500');
+                            achievements.rich_1000.current += add; unlockAch('rich_1000');
                         }
-                        updateUI();
                     }
                 }
             });
@@ -379,14 +423,13 @@
                 let dx = player.x - en.x, dy = player.y - en.y, d = Math.sqrt(dx*dx + dy*dy);
                 if (d < 0.6) { 
                     player.health -= 0.5; 
-                    killsWithoutDamage = 0; // Сброс серии без урона
-                    updateUI(); 
+                    killsWithoutDamage = 0; 
                 }
                 else if (d < 8) {
                     let vx = (dx/d)*0.02, vy = (dy/d)*0.02;
                     if(map[Math.floor(en.y)][Math.floor(en.x + vx*3)] === 0) en.x += vx;
                     if(map[Math.floor(en.y + vy*3)][Math.floor(en.x)] === 0) en.y += vy;
-                    if(d < 1) { achievements.ninja.current = 1; unlockAch('ninja'); }
+                    if(d < 0.8) { achievements.ninja.current = 1; unlockAch('ninja'); }
                 }
             });
 
@@ -396,6 +439,7 @@
             }
             
             if(flash > 0) flash--;
+            updateUI();
         }
 
         function draw() {
@@ -465,9 +509,9 @@
                 cont.innerHTML = '';
                 for(let id in achievements) {
                     let a = achievements[id];
-                    cont.innerHTML += `<div style="padding:5px; border-bottom:1px solid #222; color:${a.unlocked?'#0f0':'#555'}">
+                    cont.innerHTML += `<div style="padding:8px; border-bottom:1px solid #222; color:${a.unlocked?'#0f0':'#555'}; background:${a.unlocked?'#020':'transparent'}">
                         ${a.icon} <b>${a.name}</b> [${Math.floor(a.current)}/${a.goal}]<br>
-                        <small>${a.desc}</small>
+                        <small style="color:${a.unlocked?'#0a0':'#444'}">${a.desc}</small>
                     </div>`;
                 }
             } else showScreen('menu');
@@ -486,25 +530,40 @@
                 let take = Math.min(m - ammo, reserveAmmo);
                 ammo += take; reserveAmmo -= take; 
                 shotsInMag = 0;
-                killsInMag = 0; // Сброс серии убийств для ачивки "Поззи Прайм"
+                killsInMag = 0;
+                achievements.reloader.current++; unlockAch('reloader');
             }
             updateUI();
         }
 
         function updateUI() {
+            if (timeLeft < 0) timeLeft = 0;
             let m = Math.floor(timeLeft/60), s = Math.floor(timeLeft%60);
             document.getElementById('timer-display').innerText = `TIME: ${m}:${s.toString().padStart(2,'0')}`;
+            
             document.getElementById('ammo-display').innerText = `AMMO: ${ammo}/${reserveAmmo} | KILLS: ${enemiesKilled}/${killsToWin}`;
             document.getElementById('health-fill').style.width = player.health + "%";
             
             if(enemiesKilled >= killsToWin && gameRunning) { 
                 gameRunning = false; 
-                achievements.win1.current++; unlockAch('win1');
-                achievements.win5.current++; unlockAch('win5');
+                const win_ids = ['win1','win5','win10','win25','win50'];
+                win_ids.forEach(id => { achievements[id].current++; unlockAch(id); });
+                
                 if(currentWepIdx === 0) { achievements.pistol_fan.current = 1; unlockAch('pistol_fan'); }
+                if(currentWepIdx === 1) { achievements.shotgun_fan.current = 1; unlockAch('shotgun_fan'); }
+                if(currentWepIdx === 2) { achievements.rifle_fan.current = 1; unlockAch('rifle_fan'); }
+                if(timeLeft > 120) { achievements.fast_win.current = 1; unlockAch('fast_win'); }
+                
                 showScreen('victory-screen'); 
             }
-            if(player.health <= 0 && gameRunning) { gameRunning = false; showScreen('game-over'); }
+            if(player.health <= 0 && gameRunning) { 
+                gameRunning = false; 
+                showScreen('game-over'); 
+            }
+            if(timeLeft <= 0 && gameRunning) {
+                gameRunning = false;
+                showScreen('game-over');
+            }
         }
 
         function setupMobileControls() {
