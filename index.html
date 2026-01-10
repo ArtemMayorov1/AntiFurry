@@ -2,8 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>KILL FURRY</title>
+    <title>KILL FURRY - MULTIPLAYER</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Подключаем библиотеку для P2P связи -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         body { margin: 0; background: #000; overflow: hidden; color: white; font-family: 'Courier New', Courier, monospace; touch-action: none; }
         canvas { display: block; image-rendering: pixelated; width: 100vw; height: 100vh; }
@@ -14,7 +16,7 @@
             text-align: center;
         }
 
-        #menu, #weapon-menu, #controls-pc, #controls-mobile, #achievements-menu, #game-over, #victory-screen { display: none; }
+        #menu, #weapon-menu, #controls-pc, #controls-mobile, #achievements-menu, #game-over, #victory-screen, #multiplayer-menu { display: none; }
         #menu { display: flex; }
         
         .btn {
@@ -24,6 +26,8 @@
         .btn:hover { background: #f00; scale: 1.05; }
         .btn-weapon { background: #444; width: 250px; }
         .selected-wep { border: 2px solid lime; background: #222; }
+
+        input { background: #222; color: #fff; border: 1px solid #a00; padding: 10px; font-family: inherit; margin: 10px; text-align: center; }
 
         #ui { 
             position: absolute; bottom: 20px; left: 20px; 
@@ -80,8 +84,20 @@
         <h1>>УБЕЙ ФУРРИ<</h1>
         <p>by Karton820: TT</p>
         <button class="btn" onclick="showScreen('weapon-menu')">ИГРАТЬ</button>
+        <button class="btn" style="background:#555" onclick="showScreen('multiplayer-menu'); initMultiplayer();">МУЛЬТИПЛЕЕР</button>
         <button class="btn" style="background:#555" onclick="toggleAchievements(true)">ДОСТИЖЕНИЯ</button>
         <button class="btn" style="background:#007bff" onclick="window.open('https://www.donationalerts.com/r/karton820', '_blank')">ПОДДЕРЖАТЬ</button>
+    </div>
+
+    <!-- Новое меню мультиплеера -->
+    <div id="multiplayer-menu" class="overlay">
+        <h2>БЕТА-(НЕ РАБОТАЕТ)</h2>
+        <div id="peer-status">Инициализация...</div>
+        <div id="my-id-container" style="margin: 10px; color: #0f0;"></div>
+        <input type="text" id="remote-id" placeholder="ID друга">
+        <button class="btn" onclick="connectToFriend()">ПОДКЛЮЧИТЬСЯ К ДРУГУ</button>
+        <button class="btn" style="background:#333" onclick="showScreen('menu')">НАЗАД</button>
+        <p style="font-size: 12px; color: #888;">Для игры вместе оба игрока должны открыть сайт.<br>Один дает свой ID, второй вводит его.</p>
     </div>
 
     <div id="weapon-menu" class="overlay">
@@ -138,6 +154,43 @@
         const ctx = canvas.getContext('2d');
         const screenWidth = 320, screenHeight = 200;
         canvas.width = screenWidth; canvas.height = screenHeight;
+
+        // Код мультиплеера
+        let peer, conn;
+        let otherPlayer = { x: 0, y: 0, active: false };
+
+        function initMultiplayer() {
+            if (peer) return;
+            peer = new Peer();
+            peer.on('open', (id) => {
+                document.getElementById('my-id-container').innerText = "Твой ID: " + id;
+                document.getElementById('peer-status').innerText = "Готов к подключению";
+            });
+            peer.on('connection', (c) => {
+                conn = c;
+                setupConn();
+                showScreen('weapon-menu');
+            });
+        }
+
+        function connectToFriend() {
+            const remoteId = document.getElementById('remote-id').value;
+            if (remoteId) {
+                conn = peer.connect(remoteId);
+                setupConn();
+                showScreen('weapon-menu');
+            }
+        }
+
+        function setupConn() {
+            conn.on('data', (data) => {
+                if (data.type === 'pos') {
+                    otherPlayer.x = data.x;
+                    otherPlayer.y = data.y;
+                    otherPlayer.active = true;
+                }
+            });
+        }
 
         const enemySprite = new Image(); enemySprite.src = 'furry.png';
         const itemSprite = new Image(); itemSprite.src = 'item.jpg';
@@ -270,7 +323,6 @@
             player = { x: 2, y: 2, dir: 0, speed: 0.15, health: 100 };
             enemies = []; items = []; deadBodies = []; particles = [];
             enemiesKilled = 0; timeLeft = 180; shotsInMag = 0; itemsCollectedCount = 0;
-            killsWithoutDamage = 0; pacifistTimer = 0; killsInMag = 0; medkitStreak = 0;
             
             achievements.persistence.current++; unlockAch('persistence');
 
@@ -355,6 +407,12 @@
 
         function update() {
             if (!gameRunning) return;
+
+            // Отправка позиции другу в мультиплеере
+            if (conn && conn.open) {
+                conn.send({ type: 'pos', x: player.x, y: player.y });
+            }
+
             if (timeLeft > 0) timeLeft -= 1/60;
 
             pacifistTimer += 1/60;
@@ -465,6 +523,11 @@
             enemies.forEach(e => { if(e.alive) sprites.push({...e, type:'enemy'})});
             items.forEach(it => { if(!it.collected) sprites.push({...it, type:it.type})});
             
+            // Отрисовка другого игрока
+            if (otherPlayer.active) {
+                sprites.push({x: otherPlayer.x, y: otherPlayer.y, type: 'player2'});
+            }
+            
             sprites.sort((a,b) => Math.hypot(b.x-player.x, b.y-player.y) - Math.hypot(a.x-player.x, a.y-player.y));
             
             sprites.forEach(s => {
@@ -485,6 +548,9 @@
                         } else if(s.type === 'enemy') {
                             try { ctx.drawImage(enemySprite, sx-w/2, screenHeight/2-h/2, w, h); }
                             catch(e) { ctx.fillStyle = 'red'; ctx.fillRect(sx-w/2, screenHeight/2-h/2, w, h); }
+                        } else if(s.type === 'player2') {
+                            ctx.fillStyle = '#00f'; // Второй игрок синий
+                            ctx.fillRect(sx-w/4, screenHeight/2-h/2, w/2, h);
                         } else {
                             ctx.fillStyle = s.type === 'medkit' ? '#fff' : '#ff0';
                             ctx.fillRect(sx-w/4, screenHeight/2, w/2, h/2);
@@ -595,4 +661,3 @@
     </script>
 </body>
 </html>
-
