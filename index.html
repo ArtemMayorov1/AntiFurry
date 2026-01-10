@@ -2,25 +2,28 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Retro Raycaster - Victory & Tactics</title>
+    <title>KILL FURRY</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body { margin: 0; background: #000; overflow: hidden; color: white; font-family: 'Courier New', Courier, monospace; touch-action: none; }
         canvas { display: block; image-rendering: pixelated; width: 100vw; height: 100vh; }
         
-        #menu, #achievements-menu {
+        .overlay {
             position: absolute; inset: 0; background: rgba(0,0,0,0.9);
             display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
+            text-align: center;
         }
-        #achievements-menu { display: none; padding: 20px; }
+
+        #menu, #weapon-menu, #controls-pc, #controls-mobile, #achievements-menu, #game-over, #victory-screen { display: none; }
+        #menu { display: flex; }
         
         .btn {
-            background: #a00; color: white; border: none; padding: 15px 30px;
-            margin: 10px; font-size: 20px; cursor: pointer; font-family: inherit; transition: 0.3s;
+            background: #a00; color: white; border: none; padding: 12px 25px;
+            margin: 8px; font-size: 18px; cursor: pointer; font-family: inherit; transition: 0.3s;
         }
-        .btn:hover { background: #f00; }
-        .btn-support { background: #007bff; }
-        .btn-support:hover { background: #0056b3; }
+        .btn:hover { background: #f00; scale: 1.05; }
+        .btn-weapon { background: #444; width: 250px; }
+        .selected-wep { border: 2px solid lime; background: #222; }
 
         #ui { 
             position: absolute; bottom: 20px; left: 20px; 
@@ -53,37 +56,69 @@
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
             color: lime; font-size: 24px; font-weight: bold; pointer-events: none;
         }
-
-        /* Уведомление об ачивке */
-        #achievement-popup {
-            position: absolute; top: -100px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 215, 0, 0.9); color: black; padding: 10px 20px;
-            border-radius: 5px; font-weight: bold; transition: top 0.5s; z-index: 200;
+        #blood-overlay {
+            position: absolute; inset: 0; background: radial-gradient(circle, transparent 30%, rgba(150,0,0,0.6) 100%);
+            pointer-events: none; opacity: 0; transition: opacity 0.1s; z-index: 5;
         }
 
-        .ach-list { text-align: left; max-width: 400px; margin-bottom: 20px; }
-        .ach-item { margin: 10px 0; padding: 5px; border-bottom: 1px solid #333; }
-        .ach-unlocked { color: #0f0; border-left: 3px solid #0f0; padding-left: 10px; }
-        .ach-locked { color: #666; }
+        #ach-notification {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9); color: #0f0; padding: 15px 30px;
+            border-radius: 5px; font-weight: bold; display: none; z-index: 200;
+            border: 2px solid #0f0; box-shadow: 0 0 15px rgba(0,255,0,0.5);
+            pointer-events: none; animation: slideDown 0.5s ease;
+        }
+        @keyframes slideDown { from { top: -100px; } to { top: 20px; } }
     </style>
 </head>
 <body>
 
-    <div id="achievement-popup">Достижение получено!</div>
+    <div id="blood-overlay"></div>
+    <div id="ach-notification"></div>
 
-    <div id="menu">
-        <h1>Убей фурри: Миссия зачистки</h1>
-        <p>by: Karton820</p>
-        <button class="btn" onclick="startGame('pc')">ИГРАТЬ (ПК)</button>
-        <button class="btn" onclick="startGame('mobile')">ИГРАТЬ (ТЕЛЕФОН)</button>
+    <div id="menu" class="overlay">
+        <h1>>УБЕЙ ФУРРИ<</h1>
+        <p>by Karton820: TT</p>
+        <button class="btn" onclick="showScreen('weapon-menu')">ИГРАТЬ</button>
         <button class="btn" style="background:#555" onclick="toggleAchievements(true)">ДОСТИЖЕНИЯ</button>
-        <button class="btn btn-support" onclick="window.open('https://www.donationalerts.com/r/karton820', '_blank')">ПОДДЕРЖАТЬ АВТОРА</button>
+        <button class="btn" style="background:#007bff" onclick="window.open('https://www.donationalerts.com/r/karton820', '_blank')">ПОДДЕРЖАТЬ</button>
     </div>
 
-    <div id="achievements-menu">
-        <h2>ВАШИ ДОСТИЖЕНИЯ</h2>
-        <div id="ach-container" class="ach-list"></div>
-        <button class="btn" onclick="toggleAchievements(false)">НАЗАД</button>
+    <div id="weapon-menu" class="overlay">
+        <h2>ВЫБЕРИТЕ ОРУЖИЕ</h2>
+        <button id="wep0" class="btn btn-weapon selected-wep" onclick="selectWeapon(0)">ПИСТОЛЕТ</button>
+        <button id="wep1" class="btn btn-weapon" onclick="selectWeapon(1)">ДРОБОВИК</button>
+        <button id="wep2" class="btn btn-weapon" onclick="selectWeapon(2)">АВТОМАТ</button>
+        <button class="btn" onclick="showScreen('controls-pc')">ПК</button>
+        <button class="btn" onclick="showScreen('controls-mobile')">ТЕЛЕФОН</button>
+    </div>
+
+    <div id="controls-pc" class="overlay">
+        <h2>УПРАВЛЕНИЕ (ПК)</h2>
+        <p>WASD - Бег, Мышь - Огонь, R - Зарядка</p>
+        <button class="btn" onclick="startGame('pc')">В БОЙ!</button>
+    </div>
+
+    <div id="controls-mobile" class="overlay">
+        <h2>УПРАВЛЕНИЕ (MOBILE)</h2>
+        <p>Левый стик - Ходьба, Правый экран - Обзор</p>
+        <button class="btn" onclick="startGame('mobile')">В БОЙ!</button>
+    </div>
+
+    <div id="achievements-menu" class="overlay">
+        <h2>ДОСТИЖЕНИЯ</h2>
+        <div id="ach-container" style="text-align: left; width: 90%; max-width: 500px; margin-bottom: 20px; overflow-y: auto; max-height: 65vh; background: #111; padding: 10px; border: 1px solid #444;"></div>
+        <button class="btn" onclick="showScreen('menu')">В МЕНЮ</button>
+    </div>
+
+    <div id="game-over" class="overlay" style="background: rgba(50, 0, 0, 0.9);">
+        <h1 style="color:red; font-size:60px;">ТЫ ПОГИБ</h1>
+        <button class="btn" onclick="location.reload()">В МЕНЮ</button>
+    </div>
+
+    <div id="victory-screen" class="overlay" style="background: rgba(0, 50, 0, 0.9);">
+        <h1 style="color:lime;">ЗАЧИСТКА ЗАВЕРШЕНА!</h1>
+        <button class="btn" onclick="location.reload()">В МЕНЮ</button>
     </div>
 
     <div id="joystick-container"><div id="joystick-stick"></div></div>
@@ -93,6 +128,7 @@
     <canvas id="screen"></canvas>
     <div id="crosshair">+</div>
     <div id="ui">
+        <div id="timer-display">TIME: 03:00</div>
         <div id="health-bar"><div id="health-fill"></div></div>
         <div id="ammo-display">AMMO: 10/30 | KILLS: 0/15</div>
     </div>
@@ -103,8 +139,23 @@
         const screenWidth = 320, screenHeight = 200;
         canvas.width = screenWidth; canvas.height = screenHeight;
 
-        const enemySprite = new Image(); enemySprite.src = 'furry.jpg';
+        const enemySprite = new Image(); enemySprite.src = 'furry.png';
         const itemSprite = new Image(); itemSprite.src = 'item.jpg';
+
+        // Звук стрельбы
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playShootSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        }
 
         const map = [
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -120,169 +171,161 @@
         ];
         const mapW = map[0].length, mapH = map.length;
 
+        const weaponTypes = [
+            { name: "Пистолет", clip: 10, reserve: 60, range: 10, spread: 0.1, pack: 10 },
+            { name: "Дробовик", clip: 4, reserve: 24, range: 4, spread: 0.4, pack: 4 },
+            { name: "Автомат", clip: 30, reserve: 90, range: 8, spread: 0.2, pack: 30 }
+        ];
+        
+        let currentWepIdx = 0, ammo = 10, reserveAmmo = 60, shotsInMag = 0;
         let player = { x: 2, y: 2, dir: 0, speed: 0.07, health: 100 };
-        let joyPos = { x: 0, y: 0 };
-        let ammo = 10, reserveAmmo = 30, gameRunning = false, isMobile = false;
-        let enemiesKilled = 0;
+        let gameRunning = false, isMobile = false, enemiesKilled = 0, timeLeft = 180;
         const killsToWin = 15;
         
-        let enemies = [], items = [];
-        let flash = 0, zBuffer = new Array(screenWidth), keys = {}, lastTouchX = null;
+        let enemies = [], items = [], deadBodies = [], particles = [], flash = 0, itemsCollectedCount = 0;
+        let zBuffer = new Array(screenWidth), keys = {}, lastTouchX = null, joyPos = { x: 0, y: 0 };
+        
+        // Переменные для отслеживания ачивок
+        let killsWithoutDamage = 0;
+        let killsInMag = 0;
+        let pacifistTimer = 0;
+        let medkitStreak = 0;
 
-        // --- СИСТЕМА ДОСТИЖЕНИЙ ---
         let achievements = {
-            first_kill: { name: "Первый фурри", desc: "Убить 1 врага", icon: "💀", unlocked: false, goal: 1 },
-            hunter: { name: "СИГМА", desc: "Убить 10 врагов", icon: "🏹", unlocked: false, goal: 10 },
-            slayer: { name: "PozziPrime", desc: "Убить 15 врагов (Завершить миссию)", icon: "🏆", unlocked: false, goal: 15 }
+            k1: { name: "Первая кровь", desc: "Убить 1 фурри", icon: "💀", goal: 1, current: 0, unlocked: false },
+            k10: { name: "Охотник", desc: "Убить 10 фурри", icon: "🏹", goal: 10, current: 0, unlocked: false },
+            k50: { name: "Мясник", desc: "Убить 50 фурри", icon: "⚔️", goal: 50, current: 0, unlocked: false },
+            win1: { name: "Выживший", desc: "Пройти игру 1 раз", icon: "🏆", goal: 1, current: 0, unlocked: false },
+            win5: { name: "Чемпион", desc: "Пройти игру 5 раз", icon: "🥇", goal: 5, current: 0, unlocked: false },
+            fast: { name: "Спидраннер", desc: "Убить фурри в первые 5 секунд", icon: "⚡", goal: 1, current: 0, unlocked: false },
+            no_dmg: { name: "Неприкасаемый", desc: "Убить 5 фурри, не получая урона", icon: "🛡️", goal: 5, current: 0, unlocked: false },
+            low_hp: { name: "На волоске", desc: "Убить врага, имея меньше 10% здоровья", icon: "🩸", goal: 1, current: 0, unlocked: false },
+            empty: { name: "До последнего", desc: "Выстрелить всю обойму", icon: "🔫", goal: 1, current: 0, unlocked: false },
+            pistol_fan: { name: "Классика", desc: "Победить с пистолетом", icon: "🎯", goal: 1, current: 0, unlocked: false },
+            rich: { name: "Запасливый", desc: "Собрать 100 патронов", icon: "📦", goal: 100, current: 0, unlocked: false },
+            medic: { name: "Врачу, исцелися сам", desc: "Использовать аптечку при 100 HP", icon: "💊", goal: 1, current: 0, unlocked: false },
+            explorer: { name: "Турист", desc: "Пройти 500 шагов", icon: "👣", goal: 500, current: 0, unlocked: false },
+            ninja: { name: "Ниндзя", desc: "Подойти к врагу вплотную", icon: "👤", goal: 1, current: 0, unlocked: false },
+            terminator: { name: "Терминатор", desc: "100 убийств за всё время", icon: "🦾", goal: 100, current: 0, unlocked: false },
+            pacifist: { name: "Пацифист?", desc: "Продержаться 30 секунд без выстрелов", icon: "🕊️", goal: 30, current: 0, unlocked: false },
+            lucky: { name: "Везунчик", desc: "Найти 3 аптечки подряд", icon: "🍀", goal: 3, current: 0, unlocked: false },
+            sniper: { name: "Снайпер", desc: "Убить врага на макс. дистанции", icon: "👁️", goal: 1, current: 0, unlocked: false },
+            collector: { name: "Коллекционер", desc: "Собрать 10 предметов за игру", icon: "💎", goal: 10, current: 0, unlocked: false },
+            god: { name: "ПОЗЗИ ПРАЙМ", desc: "Выполнить 15 убийств без перезарядки", icon: "🌟", goal: 15, current: 0, unlocked: false }
         };
 
-        // Загрузка сохранений
-        function loadAchievements() {
-            const saved = localStorage.getItem('player_achievements');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                for (let id in parsed) {
-                    if (achievements[id]) achievements[id].unlocked = parsed[id];
+        function saveAch() { localStorage.setItem('kf_ach_v2', JSON.stringify(achievements)); }
+        function loadAch() {
+            let s = localStorage.getItem('kf_ach_v2');
+            if(s) {
+                let p = JSON.parse(s);
+                for(let k in p) if(achievements[k]) { 
+                    achievements[k].unlocked = p[k].unlocked; 
+                    achievements[k].current = p[k].current; 
                 }
             }
         }
+        loadAch();
 
-        function saveAchievements() {
-            const toSave = {};
-            for (let id in achievements) {
-                toSave[id] = achievements[id].unlocked;
-            }
-            localStorage.setItem('player_achievements', JSON.stringify(toSave));
-        }
-
-        function checkAchievements() {
-            let changed = false;
-            for (let id in achievements) {
-                let ach = achievements[id];
-                if (!ach.unlocked && enemiesKilled >= ach.goal) {
-                    ach.unlocked = true;
-                    showAchievementPopup(ach.name);
-                    changed = true;
-                }
-            }
-            if (changed) saveAchievements();
-        }
-
-        function showAchievementPopup(name) {
-            const pop = document.getElementById('achievement-popup');
-            pop.innerText = "🏆 Достижение: " + name;
-            pop.style.top = "20px";
-            setTimeout(() => { pop.style.top = "-100px"; }, 3000);
-        }
-
-        function toggleAchievements(show) {
-            document.getElementById('achievements-menu').style.display = show ? 'flex' : 'none';
-            if (show) {
-                const container = document.getElementById('ach-container');
-                container.innerHTML = '';
-                for (let id in achievements) {
-                    let ach = achievements[id];
-                    let div = document.createElement('div');
-                    div.className = 'ach-item ' + (ach.unlocked ? 'ach-unlocked' : 'ach-locked');
-                    
-                    let statusText = ach.unlocked ? '[ВЫПОЛНЕНО ✓]' : `[В ПРОЦЕССЕ: ${enemiesKilled}/${ach.goal}]`;
-                    div.innerHTML = `
-                        ${ach.icon} <b>${ach.name}</b> - ${statusText}<br>
-                        <small>${ach.desc}</small>
-                    `;
-                    container.appendChild(div);
-                }
+        function unlockAch(id) {
+            let a = achievements[id];
+            if(!a.unlocked && a.current >= a.goal) {
+                a.unlocked = true;
+                let n = document.getElementById('ach-notification');
+                n.innerHTML = `🏆 ДОСТИЖЕНИЕ:<br>${a.name}`;
+                n.style.display = 'block';
+                setTimeout(() => n.style.display = 'none', 3000);
+                saveAch();
             }
         }
 
         function startGame(mode) {
             isMobile = mode === 'mobile';
-            document.getElementById('menu').style.display = 'none';
-            if (isMobile) {
+            showScreen('none');
+            player = { x: 2, y: 2, dir: 0, speed: 0.07, health: 100 };
+            enemies = []; items = []; deadBodies = []; particles = [];
+            enemiesKilled = 0; timeLeft = 180; shotsInMag = 0; itemsCollectedCount = 0;
+            killsWithoutDamage = 0; pacifistTimer = 0; killsInMag = 0; medkitStreak = 0;
+            if(isMobile) {
                 document.getElementById('joystick-container').style.display = 'block';
                 document.getElementById('shoot-btn').style.display = 'flex';
                 document.getElementById('reload-btn').style.display = 'flex';
                 setupMobileControls();
-            } else {
-                canvas.onclick = () => canvas.requestPointerLock();
-            }
+            } else canvas.requestPointerLock();
             gameRunning = true;
+            updateUI();
             loop();
         }
 
-        function setupMobileControls() {
-            const joy = document.getElementById('joystick-container'), stick = document.getElementById('joystick-stick');
-            window.addEventListener('touchstart', e => { for(let t of e.changedTouches) if (t.clientX > window.innerWidth / 2) lastTouchX = t.clientX; }, {passive: false});
-            window.addEventListener('touchmove', e => {
-                e.preventDefault();
-                for(let t of e.touches) {
-                    if (t.clientX < window.innerWidth/2) {
-                        let rect = joy.getBoundingClientRect();
-                        let dx = t.clientX - (rect.left + rect.width/2), dy = t.clientY - (rect.top + rect.height/2);
-                        let dist = Math.min(60, Math.hypot(dx, dy)), angle = Math.atan2(dy, dx);
-                        joyPos.x = (Math.cos(angle) * dist) / 60; joyPos.y = (Math.sin(angle) * dist) / 60;
-                        stick.style.transform = `translate(calc(-50% + ${joyPos.x*60}px), calc(-50% + ${joyPos.y*60}px))`;
-                    } else if (lastTouchX !== null) {
-                        player.dir += (t.clientX - lastTouchX) * 0.007; lastTouchX = t.clientX;
-                    }
-                }
-            }, {passive: false});
-            window.addEventListener('touchend', e => { for(let t of e.changedTouches) if (t.clientX < window.innerWidth/2) { joyPos = {x:0, y:0}; stick.style.transform = 'translate(-50%, -50%)'; } else lastTouchX = null; });
-            document.getElementById('shoot-btn').addEventListener('touchstart', e => { e.preventDefault(); shoot(); });
-            document.getElementById('reload-btn').addEventListener('touchstart', e => { e.preventDefault(); reload(); });
-        }
-
-        window.addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'KeyR') reload(); });
-        window.addEventListener('keyup', e => keys[e.code] = false);
-        window.addEventListener('mousemove', e => { if (document.pointerLockElement === canvas) player.dir += e.movementX * 0.003; });
-        window.addEventListener('mousedown', () => { if (gameRunning && !isMobile) shoot(); });
-
-        function reload() {
-            if (ammo === 10 || reserveAmmo <= 0) return;
-            let toReload = Math.min(10 - ammo, reserveAmmo);
-            ammo += toReload; reserveAmmo -= toReload; updateUI();
-        }
-
         function shoot() {
-            if (ammo <= 0 || player.health <= 0) return;
-            ammo--; flash = 5;
-            let nearestEnemy = null, minDist = 10;
+            if (ammo <= 0 || player.health <= 0 || !gameRunning) return;
+            playShootSound();
+            ammo--; shotsInMag++;
+            pacifistTimer = 0; // Сброс таймера пацифиста
+            flash = 5;
+            
+            if(ammo === 0) { achievements.empty.current = 1; unlockAch('empty'); }
+
+            let wep = weaponTypes[currentWepIdx];
             enemies.forEach(en => {
                 if (!en.alive) return;
                 let dx = en.x - player.x, dy = en.y - player.y, dist = Math.sqrt(dx*dx + dy*dy);
                 let angle = Math.atan2(dy, dx) - player.dir;
                 while (angle < -Math.PI) angle += Math.PI * 2;
                 while (angle > Math.PI) angle -= Math.PI * 2;
-                if (Math.abs(angle) < 0.15 && dist < minDist && dist < getWallDist(angle + player.dir)) {
-                    minDist = dist; nearestEnemy = en;
+                
+                if (Math.abs(angle) < wep.spread && dist < wep.range) {
+                    en.alive = false; enemiesKilled++;
+                    killsWithoutDamage++;
+                    killsInMag++;
+
+                    // Ачивка: Спидраннер (в первые 5 сек после старта)
+                    if(timeLeft > 175) { achievements.fast.current = 1; unlockAch('fast'); }
+                    
+                    // Ачивка: Неприкасаемый
+                    achievements.no_dmg.current = killsWithoutDamage; unlockAch('no_dmg');
+
+                    // Ачивка: Поззи Прайм (без перезарядки)
+                    achievements.god.current = killsInMag; unlockAch('god');
+
+                    for(let i=0; i<8; i++) {
+                        particles.push({
+                            x: en.x, y: en.y, 
+                            vx: (Math.random()-0.5)*0.1, vy: (Math.random()-0.5)*0.1, 
+                            life: 40 + Math.random()*30
+                        });
+                    }
+                    deadBodies.push({x: en.x, y: en.y, opacity: 1});
+                    
+                    achievements.k1.current++; unlockAch('k1');
+                    achievements.k10.current = enemiesKilled; unlockAch('k10');
+                    achievements.k50.current++; unlockAch('k50');
+                    achievements.terminator.current++; unlockAch('terminator');
+                    if(player.health < 10) { achievements.low_hp.current = 1; unlockAch('low_hp'); }
+                    if(dist > 7) { achievements.sniper.current = 1; unlockAch('sniper'); }
+                    
+                    if (Math.random() > 0.5) {
+                        items.push({
+                            x: en.x, 
+                            y: en.y, 
+                            type: Math.random() > 0.5 ? 'ammo' : 'medkit', 
+                            collected: false
+                        });
+                    }
                 }
             });
-            if (nearestEnemy) {
-                nearestEnemy.alive = false; enemiesKilled++;
-                checkAchievements();
-                if (Math.random() > 0.7) items.push({x: nearestEnemy.x, y: nearestEnemy.y, type: Math.random() > 0.5 ? 'ammo' : 'medkit', collected: false});
-            }
             updateUI();
         }
 
-        function getWallDist(a) {
-            let d = 0; while (d < 15) { d += 0.1; let tx = Math.floor(player.x + Math.cos(a)*d), ty = Math.floor(player.y + Math.sin(a)*d); if (tx<0 || tx>=mapW || ty<0 || ty>=mapH || map[ty][tx] > 0) return d; }
-            return 15;
-        }
-
-        function updateUI() {
-            document.getElementById('ammo-display').innerText = `AMMO: ${ammo}/${reserveAmmo} | KILLS: ${enemiesKilled}/${killsToWin}`;
-            document.getElementById('health-fill').style.width = player.health + "%";
-            if (enemiesKilled >= killsToWin) { 
-                gameRunning = false; 
-                saveAchievements();
-                alert("ОТЛИЧНО! Ты теперь Pozziprime."); 
-                location.reload(); 
-            }
-            if (player.health <= 0) { alert("ВЫ ПОГИБЛИ"); location.reload(); }
-        }
-
         function update() {
+            if (!gameRunning) return;
+            if (timeLeft > 0) timeLeft -= 1/60;
+
+            // Ачивка: Пацифист
+            pacifistTimer += 1/60;
+            achievements.pacifist.current = pacifistTimer;
+            unlockAch('pacifist');
+
             let mx = 0, my = 0;
             if (isMobile) {
                 mx = (-joyPos.y * Math.cos(player.dir) + joyPos.x * Math.cos(player.dir + Math.PI/2)) * player.speed;
@@ -292,32 +335,73 @@
                 if (keys['KeyS']) { mx -= Math.cos(player.dir); my -= Math.sin(player.dir); }
                 if (keys['KeyA']) { mx += Math.cos(player.dir - Math.PI/2); my += Math.sin(player.dir - Math.PI/2); }
                 if (keys['KeyD']) { mx += Math.cos(player.dir + Math.PI/2); my += Math.sin(player.dir + Math.PI/2); }
-                let mag = Math.sqrt(mx*mx + my*my); if (mag > 0) { mx = (mx/mag)*player.speed; my = (my/mag)*player.speed; }
+                let mag = Math.sqrt(mx*mx+my*my); if(mag>0) { mx=(mx/mag)*player.speed; my=(my/mag)*player.speed; }
             }
+            
             if (map[Math.floor(player.y)][Math.floor(player.x + mx*2)] === 0) player.x += mx;
             if (map[Math.floor(player.y + my*2)][Math.floor(player.x)] === 0) player.y += my;
+            
+            if(mx !== 0 || my !== 0) { achievements.explorer.current += 0.1; unlockAch('explorer'); }
 
-            items.forEach(it => { if(!it.collected && Math.hypot(player.x-it.x, player.y-it.y) < 0.5) { 
-                it.collected = true; if(it.type==='medkit') player.health = Math.min(100, player.health+30); else reserveAmmo+=20; updateUI();
-            }});
+            items.forEach(it => {
+                if(!it.collected) {
+                    let d = Math.hypot(it.x - player.x, it.y - player.y);
+                    if(d < 0.5) {
+                        it.collected = true;
+                        itemsCollectedCount++;
+                        achievements.collector.current = itemsCollectedCount;
+                        unlockAch('collector');
+                        
+                        if(it.type === 'medkit') {
+                            medkitStreak++;
+                            achievements.lucky.current = medkitStreak; unlockAch('lucky');
+                            if(player.health >= 100) { achievements.medic.current = 1; unlockAch('medic'); }
+                            player.health = Math.min(100, player.health + 30);
+                        } else {
+                            medkitStreak = 0; // Сброс серии аптечек
+                            let add = weaponTypes[currentWepIdx].pack;
+                            reserveAmmo += add;
+                            achievements.rich.current += add; unlockAch('rich');
+                        }
+                        updateUI();
+                    }
+                }
+            });
+
+            particles.forEach((p, i) => {
+                p.x += p.vx; p.y += p.vy; p.life--;
+                if(p.life <= 0) particles.splice(i, 1);
+            });
+            deadBodies.forEach(b => { if(b.opacity > 0) b.opacity -= 0.001; });
 
             enemies.forEach(en => {
                 if (!en.alive) return;
                 let dx = player.x - en.x, dy = player.y - en.y, d = Math.sqrt(dx*dx + dy*dy);
-                if (d < 0.6) { player.health -= 0.5; updateUI(); }
-                else if (d < 8) { en.x += (dx/d)*0.025; en.y += (dy/d)*0.025; }
+                if (d < 0.6) { 
+                    player.health -= 0.5; 
+                    killsWithoutDamage = 0; // Сброс серии без урона
+                    updateUI(); 
+                }
+                else if (d < 8) {
+                    let vx = (dx/d)*0.02, vy = (dy/d)*0.02;
+                    if(map[Math.floor(en.y)][Math.floor(en.x + vx*3)] === 0) en.x += vx;
+                    if(map[Math.floor(en.y + vy*3)][Math.floor(en.x)] === 0) en.y += vy;
+                    if(d < 1) { achievements.ninja.current = 1; unlockAch('ninja'); }
+                }
             });
 
-            if (Math.random() < 0.015 && enemies.filter(e=>e.alive).length < 6) {
-                let rx = Math.random() * (mapW-2) + 1, ry = Math.random() * (mapH-2) + 1;
-                if (map[Math.floor(ry)][Math.floor(rx)] === 0 && Math.hypot(player.x-rx, player.y-ry) > 3) enemies.push({x: rx, y: ry, alive: true});
+            if (Math.random() < 0.02 && enemies.filter(e=>e.alive).length < 6) {
+                let rx = Math.random()*(mapW-2)+1, ry = Math.random()*(mapH-2)+1;
+                if(map[Math.floor(ry)][Math.floor(rx)] === 0) enemies.push({x:rx, y:ry, alive:true});
             }
-            if (flash > 0) flash--;
+            
+            if(flash > 0) flash--;
         }
 
         function draw() {
-            ctx.fillStyle = "#203"; ctx.fillRect(0,0,screenWidth,screenHeight/2);
+            ctx.fillStyle = "#101"; ctx.fillRect(0,0,screenWidth,screenHeight/2);
             ctx.fillStyle = "#111"; ctx.fillRect(0,screenHeight/2,screenWidth,screenHeight/2);
+            
             for (let i = 0; i < screenWidth; i++) {
                 let angle = (player.dir - 0.5) + (i / screenWidth), d = 0, hit = 0;
                 while (hit === 0 && d < 15) {
@@ -326,33 +410,129 @@
                     if (tx < 0 || tx >= mapW || ty < 0 || ty >= mapH) { hit = 1; d = 15; } else hit = map[ty][tx];
                 }
                 zBuffer[i] = d * Math.cos(angle - player.dir);
-                let h = screenHeight / zBuffer[i], c = 180 / (1 + d * 0.25);
-                ctx.fillStyle = hit === 1 ? `rgb(${c}, ${c*0.3}, ${c*0.3})` : `rgb(${c*0.4}, ${c*0.4}, ${c*0.8})`;
+                let h = screenHeight / zBuffer[i], c = 160 / (1 + d * 0.25);
+                ctx.fillStyle = hit === 1 ? `rgb(${c},0,0)` : `rgb(40,40,${c})`;
                 ctx.fillRect(i, screenHeight/2 - h/2, 1, h);
             }
+            
             let sprites = [];
-            enemies.forEach(e => { if(e.alive) sprites.push({...e, type: 'enemy'})});
-            items.forEach(it => { if(!it.collected) sprites.push({...it, type: it.type})});
+            deadBodies.forEach(b => { if(b.opacity > 0.1) sprites.push({x:b.x, y:b.y, type:'blood', op:b.opacity})});
+            particles.forEach(p => sprites.push({x:p.x, y:p.y, type:'gore'}));
+            enemies.forEach(e => { if(e.alive) sprites.push({...e, type:'enemy'})});
+            items.forEach(it => { if(!it.collected) sprites.push({...it, type:it.type})});
+            
             sprites.sort((a,b) => Math.hypot(b.x-player.x, b.y-player.y) - Math.hypot(a.x-player.x, a.y-player.y));
+            
             sprites.forEach(s => {
                 let dx = s.x - player.x, dy = s.y - player.y, dist = Math.sqrt(dx*dx+dy*dy);
                 let ang = Math.atan2(dy, dx) - player.dir;
-                while (ang < -Math.PI) ang += Math.PI*2; while (ang > Math.PI) ang -= Math.PI*2;
-                if (Math.abs(ang) < 1) {
-                    let sx = (ang + 0.5) * screenWidth, h = screenHeight / dist, w = h;
-                    if (dist > 0.2 && zBuffer[Math.floor(sx)] > dist) {
-                        try { ctx.drawImage(s.type === 'enemy' ? enemySprite : itemSprite, sx-w/2, screenHeight/2-h/2, w, h); }
-                        catch(e) { ctx.fillStyle = "red"; ctx.fillRect(sx-w/4, screenHeight/2, w/2, h/2); }
+                while (ang < -Math.PI) ang += Math.PI*2; 
+                while (ang > Math.PI) ang -= Math.PI*2;
+                
+                if (Math.abs(ang) < 0.8 && dist > 0.1 && dist < 15) {
+                    let sx = (ang / 1 + 0.5) * screenWidth;
+                    if (zBuffer[Math.floor(sx)] > dist) {
+                        let h = screenHeight / dist, w = h * 0.5;
+                        if(s.type === 'blood') {
+                            ctx.fillStyle = `rgba(100,0,0,${s.op})`;
+                            ctx.fillRect(sx-w, screenHeight/2+h/4, w*2, h/10);
+                        } else if(s.type === 'gore') {
+                            ctx.fillStyle = "#f00"; ctx.fillRect(sx, screenHeight/2+Math.random()*20, 2, 2);
+                        } else if(s.type === 'enemy') {
+                            try { ctx.drawImage(enemySprite, sx-w/2, screenHeight/2-h/2, w, h); }
+                            catch(e) { ctx.fillStyle = 'red'; ctx.fillRect(sx-w/2, screenHeight/2-h/2, w, h); }
+                        } else {
+                            ctx.fillStyle = s.type === 'medkit' ? '#fff' : '#ff0';
+                            ctx.fillRect(sx-w/4, screenHeight/2, w/2, h/2);
+                            ctx.fillStyle = s.type === 'medkit' ? '#f00' : '#000';
+                            ctx.fillRect(sx-2, screenHeight/2 + h/4 - 2, 4, 4);
+                        }
                     }
                 }
             });
-            if (flash > 0) { ctx.fillStyle = `rgba(255,255,200,${flash*0.1})`; ctx.fillRect(0,0,screenWidth,screenHeight); }
+            if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash*0.15})`; ctx.fillRect(0,0,screenWidth,screenHeight); }
         }
 
-        function loop() { if (gameRunning) { update(); draw(); } requestAnimationFrame(loop); }
-        
-        // Инициализация загрузки достижений при старте
-        loadAchievements();
+        function showScreen(id) {
+            document.querySelectorAll('.overlay').forEach(s => s.style.display = 'none');
+            if(id !== 'none') document.getElementById(id).style.display = 'flex';
+        }
+
+        function toggleAchievements(show) {
+            if(show) {
+                showScreen('achievements-menu');
+                let cont = document.getElementById('ach-container');
+                cont.innerHTML = '';
+                for(let id in achievements) {
+                    let a = achievements[id];
+                    cont.innerHTML += `<div style="padding:5px; border-bottom:1px solid #222; color:${a.unlocked?'#0f0':'#555'}">
+                        ${a.icon} <b>${a.name}</b> [${Math.floor(a.current)}/${a.goal}]<br>
+                        <small>${a.desc}</small>
+                    </div>`;
+                }
+            } else showScreen('menu');
+        }
+
+        function selectWeapon(idx) {
+            currentWepIdx = idx;
+            document.querySelectorAll('.btn-weapon').forEach((b, i) => b.classList.toggle('selected-wep', i === idx));
+            ammo = weaponTypes[idx].clip; reserveAmmo = weaponTypes[idx].reserve;
+            shotsInMag = 0; killsInMag = 0;
+        }
+
+        function reload() {
+            let m = weaponTypes[currentWepIdx].clip;
+            if(ammo < m && reserveAmmo > 0) {
+                let take = Math.min(m - ammo, reserveAmmo);
+                ammo += take; reserveAmmo -= take; 
+                shotsInMag = 0;
+                killsInMag = 0; // Сброс серии убийств для ачивки "Поззи Прайм"
+            }
+            updateUI();
+        }
+
+        function updateUI() {
+            let m = Math.floor(timeLeft/60), s = Math.floor(timeLeft%60);
+            document.getElementById('timer-display').innerText = `TIME: ${m}:${s.toString().padStart(2,'0')}`;
+            document.getElementById('ammo-display').innerText = `AMMO: ${ammo}/${reserveAmmo} | KILLS: ${enemiesKilled}/${killsToWin}`;
+            document.getElementById('health-fill').style.width = player.health + "%";
+            
+            if(enemiesKilled >= killsToWin && gameRunning) { 
+                gameRunning = false; 
+                achievements.win1.current++; unlockAch('win1');
+                achievements.win5.current++; unlockAch('win5');
+                if(currentWepIdx === 0) { achievements.pistol_fan.current = 1; unlockAch('pistol_fan'); }
+                showScreen('victory-screen'); 
+            }
+            if(player.health <= 0 && gameRunning) { gameRunning = false; showScreen('game-over'); }
+        }
+
+        function setupMobileControls() {
+            const joy = document.getElementById('joystick-container'), stick = document.getElementById('joystick-stick');
+            window.addEventListener('touchstart', e => { for(let t of e.changedTouches) if(t.clientX > window.innerWidth/2) lastTouchX = t.clientX; }, {passive:false});
+            window.addEventListener('touchmove', e => {
+                e.preventDefault();
+                for(let t of e.touches) {
+                    if(t.clientX < window.innerWidth/2) {
+                        let r = joy.getBoundingClientRect();
+                        let dx = t.clientX-(r.left+r.width/2), dy = t.clientY-(r.top+r.height/2);
+                        let d = Math.min(60, Math.hypot(dx,dy)), ang = Math.atan2(dy,dx);
+                        joyPos = {x:(Math.cos(ang)*d)/60, y:(Math.sin(ang)*d)/60};
+                        stick.style.transform = `translate(calc(-50% + ${joyPos.x*60}px), calc(-50% + ${joyPos.y*60}px))`;
+                    } else if(lastTouchX !== null) { player.dir += (t.clientX-lastTouchX)*0.007; lastTouchX = t.clientX; }
+                }
+            }, {passive:false});
+            window.addEventListener('touchend', e => { joyPos={x:0,y:0}; stick.style.transform='translate(-50%,-50%)'; lastTouchX=null; });
+            document.getElementById('shoot-btn').onclick = shoot;
+            document.getElementById('reload-btn').onclick = reload;
+        }
+
+        window.addEventListener('keydown', e => { keys[e.code] = true; if(e.code==='KeyR') reload(); });
+        window.addEventListener('keyup', e => keys[e.code] = false);
+        window.addEventListener('mousemove', e => { if(document.pointerLockElement) player.dir += e.movementX*0.003; });
+        window.addEventListener('mousedown', () => { if(gameRunning && !isMobile) shoot(); });
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
     </script>
 </body>
 </html>
