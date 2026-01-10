@@ -1,6 +1,0 @@
-dist
-docs
-package-json.lock
-
-# semantic-release
-CHANGELOG.md
