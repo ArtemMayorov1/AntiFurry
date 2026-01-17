@@ -137,7 +137,7 @@
     </div>
 
     <div id="game-over" class="overlay" style="background: rgba(50, 0, 0, 0.9);"><h1>ТЫ ПОГИБ</h1><button class="btn" onclick="location.reload()">В МЕНЮ</button></div>
-    <div id="victory-screen" class="overlay" style="background: rgba(0, 50, 0, 0.9);"><h1 id="victory-text">ЭТАЖ ЗАЧИЩЕН!</h1><button class="btn" onclick="nextLevel()">СЛЕДУЮЩИЙ ЭТАЖ</button></div>
+    <div id="victory-screen" class="overlay" style="background: rgba(0, 50, 0, 0.9);"><h1>ЗАЧИСТКА ЗАВЕРШЕНА!</h1><button class="btn" onclick="location.reload()">В МЕНЮ</button></div>
 
     <div id="joystick-container"><div id="joystick-stick"></div></div>
     <div id="shoot-btn">🔥</div>
@@ -147,7 +147,6 @@
     <canvas id="screen"></canvas>
     <div id="crosshair">+</div>
     <div id="ui">
-        <div id="level-display" style="color: yellow; font-weight: bold;">LEVEL: 1</div>
         <div id="timer-display">TIME: 03:00</div>
         <div id="health-bar"><div id="health-fill"></div></div>
         <div id="ammo-display">AMMO: 10/60 | KILLS: 0/15</div>
@@ -160,7 +159,7 @@
         canvas.width = screenWidth; canvas.height = screenHeight;
 
         const furrySprite = new Image();
-        furrySprite.src = 'furry.jpg';
+        furrySprite.src = 'furry.png';
 
         let settings = { sensitivity: 1.0, volume: 0.5 };
         
@@ -269,40 +268,24 @@
         ];
 
         let currentWepIdx = 0, ammo = 10, reserveAmmo = 60, player = { x: 2, y: 2, dir: 0, health: 100 };
-        let gameRunning = false, isMobile = false, enemiesKilled = 0, timeLeft = 180, flash = 0, currentLevel = 1;
+        let gameRunning = false, isMobile = false, enemiesKilled = 0, timeLeft = 180, flash = 0;
         let enemies = [], items = [], keys = {}, lastTouchX = null, joyPos = { x: 0, y: 0 }, lastShotTime = 0;
 
         function startGame(mode) {
             isMobile = mode === 'mobile'; showScreen('none');
             player = { x: 2, y: 2, dir: 0, health: 100 };
-            enemies = []; items = []; enemiesKilled = 0; timeLeft = 180; currentLevel = 1;
+            enemies = []; items = []; enemiesKilled = 0; timeLeft = 180;
             if(isMobile) {
                 document.getElementById('joystick-container').style.display = 'block';
                 ['shoot-btn','reload-btn','mobile-menu-btn'].forEach(id=>document.getElementById(id).style.display='flex');
                 setupMobileControls();
             } else canvas.requestPointerLock();
             gameRunning = true; document.getElementById('resume-btn').style.display = 'inline-block';
-            updateUI();
             requestAnimationFrame(loop);
         }
 
         function pauseGame() { gameRunning = false; showScreen('menu'); if(document.pointerLockElement) document.exitPointerLock(); }
         function resumeGame() { showScreen('none'); gameRunning = true; if(!isMobile) canvas.requestPointerLock(); }
-
-        // Логика перехода на следующий уровень
-        function nextLevel() {
-            currentLevel++;
-            enemiesKilled = 0;
-            timeLeft += 60; // Добавляем время
-            player.health = Math.min(100, player.health + 30); // Хиллим игрока
-            enemies = []; // Очищаем список врагов
-            items = []; // Очищаем предметы
-            player.x = 2; player.y = 2; // Возвращаем на старт
-            showScreen('none');
-            gameRunning = true;
-            if(!isMobile) canvas.requestPointerLock();
-            updateUI();
-        }
 
         function shoot() {
             const wep = weaponTypes[currentWepIdx];
@@ -381,21 +364,16 @@
                 else if (d < 7) { en.x += (player.x - en.x)/d * 0.03; en.y += (player.y - en.y)/d * 0.03; }
             });
 
-            // Спавн врагов чуть агрессивнее с каждым уровнем
-            if (Math.random() < (0.02 + currentLevel * 0.005) && enemies.filter(e=>e.alive).length < 8) {
+            if (Math.random() < 0.02 && enemies.filter(e=>e.alive).length < 8) {
                 let rx = Math.random()*(mapW-2)+1, ry = Math.random()*(mapH-2)+1;
                 if(map[Math.floor(ry)][Math.floor(rx)] === 0) enemies.push({x:rx, y:ry, alive:true});
             }
-
             if(flash > 0) flash--;
             if(player.health <= 0 || timeLeft <= 0) { 
                 gameRunning = false; trackAch('die', 1); trackAch('streak', 0, true); showScreen('game-over'); 
             }
             if(enemiesKilled >= 15) { 
-                gameRunning = false; trackAch('win', 1); 
-                document.getElementById('victory-text').innerText = `ЭТАЖ ${currentLevel} ЗАЧИЩЕН!`;
-                showScreen('victory-screen'); 
-                if(document.pointerLockElement) document.exitPointerLock();
+                gameRunning = false; trackAch('win', 1); showScreen('victory-screen'); 
             }
             if(!isMobile && keys['Space']) shoot();
             if(isMobile && joyPos.shooting) shoot();
@@ -456,7 +434,6 @@
         function updateUI() {
             document.getElementById('ammo-display').innerText = `AMMO: ${ammo}/${reserveAmmo} | KILLS: ${enemiesKilled}/15`;
             document.getElementById('health-fill').style.width = player.health + "%";
-            document.getElementById('level-display').innerText = `LEVEL: ${currentLevel}`;
             let m = Math.floor(timeLeft/60), s = Math.floor(timeLeft%60);
             document.getElementById('timer-display').innerText = `TIME: ${m}:${s<10?'0'+s:s}`;
         }
