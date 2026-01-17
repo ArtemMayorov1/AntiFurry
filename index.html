@@ -2,9 +2,8 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>KILL FURRY - MULTIPLAYER</title>
+    <title>KILL FURRY</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Подключаем библиотеку для P2P связи -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         body { margin: 0; background: #000; overflow: hidden; color: white; font-family: 'Courier New', Courier, monospace; touch-action: none; }
@@ -16,7 +15,7 @@
             text-align: center;
         }
 
-        #menu, #weapon-menu, #controls-pc, #controls-mobile, #achievements-menu, #game-over, #victory-screen, #multiplayer-menu { display: none; }
+        #menu, #weapon-menu, #controls-pc, #controls-mobile, #achievements-menu, #game-over, #victory-screen, #multiplayer-menu, #settings-menu { display: none; }
         #menu { display: flex; }
         
         .btn {
@@ -28,6 +27,9 @@
         .selected-wep { border: 2px solid lime; background: #222; }
 
         input { background: #222; color: #fff; border: 1px solid #a00; padding: 10px; font-family: inherit; margin: 10px; text-align: center; }
+
+        .setting-row { margin: 15px; width: 300px; display: flex; justify-content: space-between; align-items: center; }
+        input[type=range] { width: 150px; cursor: pointer; }
 
         #ui { 
             position: absolute; bottom: 20px; left: 20px; 
@@ -47,7 +49,7 @@
             border-radius: 50%; transform: translate(-50%, -50%);
         }
 
-        #shoot-btn, #reload-btn {
+        #shoot-btn, #reload-btn, #mobile-menu-btn {
             position: absolute; border-radius: 50%; 
             background: rgba(255,0,0,0.5); border: 4px solid white;
             display: none; align-items: center; justify-content: center;
@@ -55,6 +57,7 @@
         }
         #shoot-btn { bottom: 40px; right: 40px; width: 100px; height: 100px; font-size: 40px; }
         #reload-btn { bottom: 150px; right: 55px; width: 70px; height: 70px; font-size: 25px; background: rgba(0,100,255,0.5); }
+        #mobile-menu-btn { top: 20px; right: 20px; width: 60px; height: 60px; font-size: 20px; border-radius: 10px; background: rgba(50,50,50,0.7); }
 
         #crosshair { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
@@ -82,22 +85,28 @@
 
     <div id="menu" class="overlay">
         <h1>>УБЕЙ ФУРРИ<</h1>
-        <p>by Karton820: TT</p>
-        <button class="btn" onclick="showScreen('weapon-menu')">ИГРАТЬ</button>
-        <button class="btn" style="background:#555" onclick="showScreen('multiplayer-menu'); initMultiplayer();">МУЛЬТИПЛЕЕР</button>
+        <button id="resume-btn" class="btn" style="display:none; background: #0a0;" onclick="resumeGame()">ПРОДОЛЖИТЬ</button>
+        <button class="btn" onclick="showScreen('weapon-menu')">НОВАЯ ИГРА</button>
+        <button class="btn" style="background:#444" onclick="showScreen('settings-menu')">НАСТРОЙКИ</button>
+        <button class="btn" style="background:#555" onclick="showScreen('multiplayer-menu'); initMultiplayer();">МУЛЬТИПЛЕЕР (BETA)</button>
         <button class="btn" style="background:#555" onclick="toggleAchievements(true)">ДОСТИЖЕНИЯ</button>
-        <button class="btn" style="background:#007bff" onclick="window.open('https://www.donationalerts.com/r/karton820', '_blank')">ПОДДЕРЖАТЬ</button>
+        <button class="btn" style="background:#d4af37; color: black; font-weight: bold;" onclick="window.open('https://www.donationalerts.com/r/karton820', '_blank')">ПОДДЕРЖАТЬ</button>
     </div>
 
-    <!-- Новое меню мультиплеера -->
+    <div id="settings-menu" class="overlay">
+        <h2>НАСТРОЙКИ</h2>
+        <div class="setting-row"><span>Чувствительность</span><input type="range" id="sens-slider" min="0.1" max="3" step="0.1" value="1"></div>
+        <div class="setting-row"><span>Громкость</span><input type="range" id="vol-slider" min="0" max="1" step="0.05" value="0.5"></div>
+        <button class="btn" onclick="showScreen('menu')">НАЗАД</button>
+    </div>
+
     <div id="multiplayer-menu" class="overlay">
-        <h2>БЕТА-(НЕ РАБОТАЕТ)</h2>
-        <div id="peer-status">Инициализация...</div>
+        <h2>МУЛЬТИПЛЕЕР</h2>
+        <div id="peer-status">Ожидание...</div>
         <div id="my-id-container" style="margin: 10px; color: #0f0;"></div>
         <input type="text" id="remote-id" placeholder="ID друга">
-        <button class="btn" onclick="connectToFriend()">ПОДКЛЮЧИТЬСЯ К ДРУГУ</button>
+        <button class="btn" onclick="connectToFriend()">ПОДКЛЮЧИТЬСЯ</button>
         <button class="btn" style="background:#333" onclick="showScreen('menu')">НАЗАД</button>
-        <p style="font-size: 12px; color: #888;">Для игры вместе оба игрока должны открыть сайт.<br>Один дает свой ID, второй вводит его.</p>
     </div>
 
     <div id="weapon-menu" class="overlay">
@@ -111,13 +120,13 @@
 
     <div id="controls-pc" class="overlay">
         <h2>УПРАВЛЕНИЕ (ПК)</h2>
-        <p>WASD - Бег, Мышь - Огонь, R - Зарядка</p>
+        <p>WASD - Движение, Мышь - Огонь, R - Перезарядка, Esc - Пауза</p>
         <button class="btn" onclick="startGame('pc')">В БОЙ!</button>
     </div>
 
     <div id="controls-mobile" class="overlay">
         <h2>УПРАВЛЕНИЕ (MOBILE)</h2>
-        <p>Левый стик - Ходьба, Правый экран - Обзор</p>
+        <p>Левый стик - Ходьба, Правая часть - Обзор</p>
         <button class="btn" onclick="startGame('mobile')">В БОЙ!</button>
     </div>
 
@@ -127,26 +136,21 @@
         <button class="btn" onclick="showScreen('menu')">В МЕНЮ</button>
     </div>
 
-    <div id="game-over" class="overlay" style="background: rgba(50, 0, 0, 0.9);">
-        <h1 style="color:red; font-size:60px;">ТЫ ПОГИБ</h1>
-        <button class="btn" onclick="location.reload()">В МЕНЮ</button>
-    </div>
-
-    <div id="victory-screen" class="overlay" style="background: rgba(0, 50, 0, 0.9);">
-        <h1 style="color:lime;">ЗАЧИСТКА ЗАВЕРШЕНА!</h1>
-        <button class="btn" onclick="location.reload()">В МЕНЮ</button>
-    </div>
+    <div id="game-over" class="overlay" style="background: rgba(50, 0, 0, 0.9);"><h1>ТЫ ПОГИБ</h1><button class="btn" onclick="location.reload()">В МЕНЮ</button></div>
+    <div id="victory-screen" class="overlay" style="background: rgba(0, 50, 0, 0.9);"><h1 id="victory-text">ЭТАЖ ЗАЧИЩЕН!</h1><button class="btn" onclick="nextLevel()">СЛЕДУЮЩИЙ ЭТАЖ</button></div>
 
     <div id="joystick-container"><div id="joystick-stick"></div></div>
     <div id="shoot-btn">🔥</div>
     <div id="reload-btn">🔄</div>
+    <div id="mobile-menu-btn" onclick="pauseGame()">ESC</div>
 
     <canvas id="screen"></canvas>
     <div id="crosshair">+</div>
     <div id="ui">
+        <div id="level-display" style="color: yellow; font-weight: bold;">LEVEL: 1</div>
         <div id="timer-display">TIME: 03:00</div>
         <div id="health-bar"><div id="health-fill"></div></div>
-        <div id="ammo-display">AMMO: 10/30 | KILLS: 0/15</div>
+        <div id="ammo-display">AMMO: 10/60 | KILLS: 0/15</div>
     </div>
 
     <script>
@@ -155,59 +159,94 @@
         const screenWidth = 320, screenHeight = 200;
         canvas.width = screenWidth; canvas.height = screenHeight;
 
-        // Код мультиплеера
-        let peer, conn;
-        let otherPlayer = { x: 0, y: 0, active: false };
+        const furrySprite = new Image();
+        furrySprite.src = 'furry.jpg';
 
-        function initMultiplayer() {
-            if (peer) return;
-            peer = new Peer();
-            peer.on('open', (id) => {
-                document.getElementById('my-id-container').innerText = "Твой ID: " + id;
-                document.getElementById('peer-status').innerText = "Готов к подключению";
-            });
-            peer.on('connection', (c) => {
-                conn = c;
-                setupConn();
-                showScreen('weapon-menu');
+        let settings = { sensitivity: 1.0, volume: 0.5 };
+        
+        let achievements = {};
+        function initAchievements() {
+            const types = [
+                {id: 'kill', n: 'Охотник', icon: '💀', goals: [1,5,10,20,50,100,200,500,1000,5000]},
+                {id: 'win', n: 'Герой', icon: '🎖️', goals: [1,2,3,4,5,10,15,20,25,50]},
+                {id: 'shot', n: 'Стрелок', icon: '🎯', goals: [10,50,100,200,300,400,500,1000,2000,5000]},
+                {id: 'heal', n: 'Живчик', icon: '💊', goals: [1,5,10,20,30,40,50,60,70,100]},
+                {id: 'ammo', n: 'Снабженец', icon: '📦', goals: [1,5,10,20,30,40,50,60,70,100]},
+                {id: 'time', n: 'Ветеран', icon: '⏳', goals: [60,180,300,600,1200,1800,3600,7200,14400,86400]},
+                {id: 'die', n: 'Смертник', icon: '⚰️', goals: [1,5,10,15,20,25,30,40,50,100]},
+                {id: 'reload', n: 'Ловкач', icon: '♻️', goals: [5,10,20,30,40,50,100,150,200,500]},
+                {id: 'multi', n: 'Сетевик', icon: '🌐', goals: [1,2,3,4,5,6,7,8,9,10]},
+                {id: 'streak', n: 'Берсерк', icon: '🔥', goals: [3,5,7,10,12,15,17,20,25,30]}
+            ];
+            types.forEach(t => {
+                t.goals.forEach((g, i) => {
+                    achievements[`${t.id}_${i}`] = { 
+                        name: `${t.n} LVL ${i+1}`, 
+                        goal: g, current: 0, unlocked: false, icon: t.icon, 
+                        desc: `Нужно: ${g}` 
+                    };
+                });
             });
         }
+        initAchievements();
 
-        function connectToFriend() {
-            const remoteId = document.getElementById('remote-id').value;
-            if (remoteId) {
-                conn = peer.connect(remoteId);
-                setupConn();
-                showScreen('weapon-menu');
+        function trackAch(id, val, set=false) {
+            for(let i=0; i<10; i++) {
+                let a = achievements[`${id}_${i}`]; if(!a || a.unlocked) continue;
+                if(set) a.current = val; else a.current += val;
+                if(a.current >= a.goal) { a.unlocked = true; showAchPop(a); saveAch(); }
             }
         }
-
-        function setupConn() {
-            conn.on('data', (data) => {
-                if (data.type === 'pos') {
-                    otherPlayer.x = data.x;
-                    otherPlayer.y = data.y;
-                    otherPlayer.active = true;
-                }
-            });
+        function saveAch() { localStorage.setItem('furry_ach', JSON.stringify(achievements)); }
+        function loadAch() { 
+            const s = localStorage.getItem('furry_ach'); 
+            if(s) { 
+                const data = JSON.parse(s);
+                for(let k in data) if(achievements[k]) achievements[k] = data[k];
+            }
         }
+        loadAch();
 
-        const enemySprite = new Image(); enemySprite.src = 'furry.png';
-        const itemSprite = new Image(); itemSprite.src = 'item.jpg';
+        function showAchPop(a) {
+            const n = document.getElementById('ach-notification');
+            n.innerHTML = `${a.icon} ДОСТИЖЕНИЕ: ${a.name}`;
+            n.style.display = 'block'; setTimeout(() => n.style.display='none', 3000);
+        }
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playShootSound() {
+        function playSfx(type) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            if (settings.volume <= 0) return;
+            const osc = audioCtx.createOscillator(), gain = audioCtx.createGain(), now = audioCtx.currentTime;
+            if(type==='shoot') {
+                osc.type = currentWepIdx === 1 ? 'sawtooth' : 'square';
+                osc.frequency.setValueAtTime(currentWepIdx === 1 ? 150 : 400, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+                gain.gain.setValueAtTime(0.2 * settings.volume, now);
+            } else if(type==='reload') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(600, now);
+                gain.gain.setValueAtTime(0.1 * settings.volume, now);
+            } else if(type==='hurt') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
+                gain.gain.setValueAtTime(0.3 * settings.volume, now);
+            }
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
             osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            osc.start(); osc.stop(now + 0.2);
         }
+
+        let peer, conn, otherPlayer = { x: 0, y: 0, active: false };
+        function initMultiplayer() {
+            if (peer) return;
+            trackAch('multi', 1);
+            try {
+                peer = new Peer();
+                peer.on('open', id => { document.getElementById('my-id-container').innerText = "ID: " + id; });
+                peer.on('connection', c => { conn = c; setupConn(); });
+            } catch(e) { console.error("PeerJS error"); }
+        }
+        function connectToFriend() { const id = document.getElementById('remote-id').value; if(id) { conn = peer.connect(id); setupConn(); } }
+        function setupConn() { conn.on('data', d => { if(d.type==='pos') { otherPlayer.x=d.x; otherPlayer.y=d.y; otherPlayer.active=true; } }); }
 
         const map = [
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -224,343 +263,184 @@
         const mapW = map[0].length, mapH = map.length;
 
         const weaponTypes = [
-            { name: "Пистолет", clip: 10, reserve: 60, range: 10, spread: 0.1, pack: 10 },
-            { name: "Дробовик", clip: 4, reserve: 24, range: 4, spread: 0.4, pack: 4 },
-            { name: "Автомат", clip: 30, reserve: 90, range: 8, spread: 0.2, pack: 30 }
+            { clip: 10, res: 60, spread: 0.1, auto: false },
+            { clip: 4, res: 24, spread: 0.4, auto: false },
+            { clip: 30, res: 90, spread: 0.15, auto: true }
         ];
-        
-        let currentWepIdx = 0, ammo = 10, reserveAmmo = 60, shotsInMag = 0;
-        let player = { x: 2, y: 2, dir: 0, speed: 0.15, health: 100 };
-        let gameRunning = false, isMobile = false, enemiesKilled = 0, timeLeft = 180;
-        const killsToWin = 15;
-        
-        let enemies = [], items = [], deadBodies = [], particles = [], flash = 0, itemsCollectedCount = 0;
-        let zBuffer = new Array(screenWidth), keys = {}, lastTouchX = null, joyPos = { x: 0, y: 0 };
-        
-        let killsWithoutDamage = 0, killsInMag = 0, pacifistTimer = 0, medkitStreak = 0, gamesPlayed = 0;
 
-        let achievements = {
-            k1: { name: "Первый фурри", desc: "Убить 1 фурри", icon: "💀", goal: 1, current: 0, unlocked: false },
-            k10: { name: "Охотник", desc: "Убить 10 фурри", icon: "🏹", goal: 10, current: 0, unlocked: false },
-            k25: { name: "Истребитель", desc: "Убить 25 фурри", icon: "⚔️", goal: 25, current: 0, unlocked: false },
-            k50: { name: "Мясник", desc: "Убить 50 фурри", icon: "🩸", goal: 50, current: 0, unlocked: false },
-            k75: { name: "Палач", desc: "Убить 75 фурри", icon: "👿", goal: 75, current: 0, unlocked: false },
-            k100: { name: "Мастер смерти", desc: "Убить 100 фурри", icon: "🔥", goal: 100, current: 0, unlocked: false },
-            k250: { name: "Легенда пустошей", desc: "Убить 250 фурри", icon: "👑", goal: 250, current: 0, unlocked: false },
-            k500: { name: "Геноцид", desc: "Убить 500 фурри", icon: "☢️", goal: 500, current: 0, unlocked: false },
-            k1000: { name: "Бог Войны", desc: "Убить 1000 фурри", icon: "☄️", goal: 1000, current: 0, unlocked: false },
-            win1: { name: "Выживший", desc: "Пройти игру 1 раз", icon: "🏆", goal: 1, current: 0, unlocked: false },
-            win5: { name: "Ветеран", desc: "Пройти игру 5 раз", icon: "🥇", goal: 5, current: 0, unlocked: false },
-            win10: { name: "Профессионал", desc: "Пройти игру 10 раз", icon: "🎖️", goal: 10, current: 0, unlocked: false },
-            win25: { name: "Неудержимый", desc: "Пройти игру 25 раз", icon: "💎", goal: 25, current: 0, unlocked: false },
-            win50: { name: "Гроссмейстер", desc: "Пройти игру 50 раз", icon: "🌌", goal: 50, current: 0, unlocked: false },
-            fast: { name: "Спидраннер", desc: "Убить фурри в первые 5 секунд", icon: "⚡", goal: 1, current: 0, unlocked: false },
-            fast_3s: { name: "Реакция мангуста", desc: "Убить фурри в первые 3 секунды", icon: "🌩️", goal: 1, current: 0, unlocked: false },
-            fast_win: { name: "Молниеносный", desc: "Победить менее чем за 60 секунд", icon: "⏱️", goal: 1, current: 0, unlocked: false },
-            no_dmg: { name: "Неприкасаемый", desc: "Убить 5 фурри подряд без урона", icon: "🛡️", goal: 5, current: 0, unlocked: false },
-            no_dmg_10: { name: "Призрак", desc: "Убить 10 фурри подряд без урона", icon: "👻", goal: 10, current: 0, unlocked: false },
-            no_dmg_15: { name: "Тень", desc: "Убить 15 фурри подряд без урона", icon: "🕶️", goal: 15, current: 0, unlocked: false },
-            low_hp: { name: "На волоске", desc: "Убить врага, имея меньше 10% здоровья", icon: "🩹", goal: 1, current: 0, unlocked: false },
-            low_hp_5: { name: "У края бездны", desc: "Убить врага, имея меньше 5% здоровья", icon: "💀", goal: 1, current: 0, unlocked: false },
-            empty: { name: "До последнего", desc: "Выстрелить всю обойму", icon: "🔫", goal: 1, current: 0, unlocked: false },
-            trigger_happy: { name: "Гатлинг", desc: "Опустошить 10 магазинов", icon: "💥", goal: 10, current: 0, unlocked: false },
-            pistol_fan: { name: "Классика", desc: "Победить с пистолетом", icon: "🎯", goal: 1, current: 0, unlocked: false },
-            shotgun_fan: { name: "Дробовик-шоу", desc: "Победить с дробовиком", icon: "📢", goal: 1, current: 0, unlocked: false },
-            rifle_fan: { name: "Свинцовый дождь", desc: "Победить с автоматом", icon: "🌧️", goal: 1, current: 0, unlocked: false },
-            rich: { name: "Запасливый", desc: "Собрать 100 патронов", icon: "📦", goal: 100, current: 0, unlocked: false },
-            rich_500: { name: "Снабженец", desc: "Собрать 500 патронов", icon: "🚚", goal: 500, current: 0, unlocked: false },
-            rich_1000: { name: "Арсенал", desc: "Собрать 1000 патронов", icon: "🏦", goal: 1000, current: 0, unlocked: false },
-            medic_waste: { name: "Ипохондрик", desc: "Использовать аптечку при 100 HP", icon: "💊", goal: 1, current: 0, unlocked: false },
-            medic: { name: "Полевой врач", desc: "Использовать 1 аптечку", icon: "🏥", goal: 1, current: 0, unlocked: false },
-            medic_10: { name: "Хирург", desc: "Использовать 10 аптечек", icon: "👨‍⚕️", goal: 10, current: 0, unlocked: false },
-            medic_50: { name: "Бессмертный", desc: "Использовать 50 аптечек", icon: "🧛", goal: 50, current: 0, unlocked: false },
-            explorer: { name: "Турист", desc: "Пройти 500 шагов", icon: "👣", goal: 500, current: 0, unlocked: false },
-            marathon: { name: "Марафонец", desc: "Пройти 5000 шагов", icon: "🏃", goal: 5000, current: 0, unlocked: false },
-            nomad: { name: "Странник", desc: "Пройти 10000 шагов", icon: "🗺️", goal: 10000, current: 0, unlocked: false },
-            ninja: { name: "Ниндзя", desc: "Подойти к врагу вплотную", icon: "👤", goal: 1, current: 0, unlocked: false },
-            assassin: { name: "Ассасин", desc: "Убить 5 врагов вплотную", icon: "🗡️", goal: 5, current: 0, unlocked: false },
-            sniper: { name: "Снайпер", desc: "Убить врага на макс. дистанции", icon: "👁️", goal: 1, current: 0, unlocked: false },
-            deadeye: { name: "Зоркий глаз", desc: "5 убийств на макс. дистанции", icon: "🔭", goal: 5, current: 0, unlocked: false },
-            collector: { name: "Коллекционер", desc: "Собрать 10 предметов", icon: "💎", goal: 10, current: 0, unlocked: false },
-            scavenger: { name: "Мусорщик", desc: "Собрать 50 предметов", icon: "🧹", goal: 50, current: 0, unlocked: false },
-            artifact: { name: "Искатель", desc: "Собрать 100 предметов", icon: "🏺", goal: 100, current: 0, unlocked: false },
-            pacifist: { name: "Пацифист?", desc: "30 сек. без выстрелов в бою", icon: "🕊️", goal: 30, current: 0, unlocked: false },
-            true_pacifist: { name: "Миротворец", desc: "60 сек. без выстрелов в бою", icon: "🤝", goal: 60, current: 0, unlocked: false },
-            god: { name: "ПОЗЗИ ПРАЙМ", desc: "15 убийств без перезарядки", icon: "🌟", goal: 15, current: 0, unlocked: false },
-            lucky: { name: "Везунчик", desc: "Найти 3 аптечки подряд", icon: "🍀", goal: 3, current: 0, unlocked: false },
-            reloader: { name: "Мастер затвора", desc: "Перезарядиться 100 раз", icon: "🔄", goal: 100, current: 0, unlocked: false },
-            persistence: { name: "Упорство", desc: "Сыграть 10 игр", icon: "🎮", goal: 10, current: 0, unlocked: false }
-        };
-
-        function saveAch() { localStorage.setItem('kf_ach_v3_50', JSON.stringify(achievements)); }
-        function loadAch() {
-            let s = localStorage.getItem('kf_ach_v3_50');
-            if(s) {
-                let p = JSON.parse(s);
-                for(let k in p) if(achievements[k]) { 
-                    achievements[k].unlocked = p[k].unlocked; 
-                    achievements[k].current = p[k].current; 
-                }
-            }
-        }
-        loadAch();
-
-        function unlockAch(id) {
-            let a = achievements[id];
-            if(!a.unlocked && a.current >= a.goal) {
-                a.unlocked = true;
-                let n = document.getElementById('ach-notification');
-                n.innerHTML = `🏆 ДОСТИЖЕНИЕ:<br>${a.name}`;
-                n.style.display = 'block';
-                setTimeout(() => n.style.display = 'none', 3000);
-            }
-            saveAch();
-        }
+        let currentWepIdx = 0, ammo = 10, reserveAmmo = 60, player = { x: 2, y: 2, dir: 0, health: 100 };
+        let gameRunning = false, isMobile = false, enemiesKilled = 0, timeLeft = 180, flash = 0, currentLevel = 1;
+        let enemies = [], items = [], keys = {}, lastTouchX = null, joyPos = { x: 0, y: 0 }, lastShotTime = 0;
 
         function startGame(mode) {
-            isMobile = mode === 'mobile';
-            showScreen('none');
-            player = { x: 2, y: 2, dir: 0, speed: 0.15, health: 100 };
-            enemies = []; items = []; deadBodies = []; particles = [];
-            enemiesKilled = 0; timeLeft = 180; shotsInMag = 0; itemsCollectedCount = 0;
-            
-            achievements.persistence.current++; unlockAch('persistence');
-
+            isMobile = mode === 'mobile'; showScreen('none');
+            player = { x: 2, y: 2, dir: 0, health: 100 };
+            enemies = []; items = []; enemiesKilled = 0; timeLeft = 180; currentLevel = 1;
             if(isMobile) {
                 document.getElementById('joystick-container').style.display = 'block';
-                document.getElementById('shoot-btn').style.display = 'flex';
-                document.getElementById('reload-btn').style.display = 'flex';
+                ['shoot-btn','reload-btn','mobile-menu-btn'].forEach(id=>document.getElementById(id).style.display='flex');
                 setupMobileControls();
             } else canvas.requestPointerLock();
-            gameRunning = true;
+            gameRunning = true; document.getElementById('resume-btn').style.display = 'inline-block';
             updateUI();
-            loop();
+            requestAnimationFrame(loop);
+        }
+
+        function pauseGame() { gameRunning = false; showScreen('menu'); if(document.pointerLockElement) document.exitPointerLock(); }
+        function resumeGame() { showScreen('none'); gameRunning = true; if(!isMobile) canvas.requestPointerLock(); }
+
+        // Логика перехода на следующий уровень
+        function nextLevel() {
+            currentLevel++;
+            enemiesKilled = 0;
+            timeLeft += 60; // Добавляем время
+            player.health = Math.min(100, player.health + 30); // Хиллим игрока
+            enemies = []; // Очищаем список врагов
+            items = []; // Очищаем предметы
+            player.x = 2; player.y = 2; // Возвращаем на старт
+            showScreen('none');
+            gameRunning = true;
+            if(!isMobile) canvas.requestPointerLock();
+            updateUI();
         }
 
         function shoot() {
-            if (ammo <= 0 || player.health <= 0 || !gameRunning) return;
-            playShootSound();
-            ammo--; shotsInMag++;
-            pacifistTimer = 0;
-            flash = 5;
-            
-            if(ammo === 0) { 
-                achievements.empty.current = 1; unlockAch('empty'); 
-                achievements.trigger_happy.current++; unlockAch('trigger_happy');
-            }
+            const wep = weaponTypes[currentWepIdx];
+            if (ammo <= 0 || Date.now() - lastShotTime < (wep.auto ? 100 : 300)) return;
+            playSfx('shoot'); ammo--; flash = 3; lastShotTime = Date.now(); 
+            trackAch('shot', 1);
 
-            let wep = weaponTypes[currentWepIdx];
+            let nearestEnemy = null;
+            let minDist = 10;
+
             enemies.forEach(en => {
                 if (!en.alive) return;
-                let dx = en.x - player.x, dy = en.y - player.y, dist = Math.sqrt(dx*dx + dy*dy);
-                let angle = Math.atan2(dy, dx) - player.dir;
-                while (angle < -Math.PI) angle += Math.PI * 2;
-                while (angle > Math.PI) angle -= Math.PI * 2;
+                let ang = Math.atan2(en.y - player.y, en.x - player.x) - player.dir;
+                while (ang < -Math.PI) ang += Math.PI * 2; 
+                while (ang > Math.PI) ang -= Math.PI * 2;
+                let dist = Math.hypot(en.x - player.x, en.y - player.y);
                 
-                if (Math.abs(angle) < wep.spread && dist < wep.range) {
-                    en.alive = false; enemiesKilled++;
-                    killsWithoutDamage++;
-                    killsInMag++;
-
-                    if(timeLeft > 175) { achievements.fast.current = 1; unlockAch('fast'); }
-                    if(timeLeft > 177) { achievements.fast_3s.current = 1; unlockAch('fast_3s'); }
-                    
-                    achievements.no_dmg.current = killsWithoutDamage; unlockAch('no_dmg');
-                    achievements.no_dmg_10.current = killsWithoutDamage; unlockAch('no_dmg_10');
-                    achievements.no_dmg_15.current = killsWithoutDamage; unlockAch('no_dmg_15');
-                    achievements.god.current = killsInMag; unlockAch('god');
-
-                    for(let i=0; i<8; i++) {
-                        particles.push({
-                            x: en.x, y: en.y, 
-                            vx: (Math.random()-0.5)*0.1, vy: (Math.random()-0.5)*0.1, 
-                            life: 40 + Math.random()*30
-                        });
-                    }
-                    deadBodies.push({x: en.x, y: en.y, opacity: 1});
-                    
-                    // Kill achievements
-                    const k_ids = ['k1','k10','k25','k50','k75','k100','k250','k500','k1000'];
-                    k_ids.forEach(id => { achievements[id].current++; unlockAch(id); });
-
-                    if(player.health < 10) { achievements.low_hp.current = 1; unlockAch('low_hp'); }
-                    if(player.health < 5) { achievements.low_hp_5.current = 1; unlockAch('low_hp_5'); }
-                    
-                    if(dist > 7.5) { 
-                        achievements.sniper.current = 1; unlockAch('sniper'); 
-                        achievements.deadeye.current++; unlockAch('deadeye');
-                    }
-                    if(dist < 1.2) { achievements.assassin.current++; unlockAch('assassin'); }
-                    
-                    if (Math.random() > 0.5) {
-                        items.push({
-                            x: en.x, 
-                            y: en.y, 
-                            type: Math.random() > 0.5 ? 'ammo' : 'medkit', 
-                            collected: false
-                        });
-                    }
+                if (Math.abs(ang) < wep.spread && dist < minDist) {
+                    nearestEnemy = en;
+                    minDist = dist;
                 }
             });
+
+            if (nearestEnemy) {
+                nearestEnemy.alive = false; 
+                enemiesKilled++; 
+                trackAch('kill', 1);
+                trackAch('streak', 1);
+                if (Math.random() > 0.6) {
+                    items.push({x: nearestEnemy.x, y: nearestEnemy.y, type: Math.random() > 0.5 ? 'ammo' : 'medkit'});
+                }
+            }
             updateUI();
+        }
+
+        function reload() {
+            let take = Math.min(weaponTypes[currentWepIdx].clip - ammo, reserveAmmo);
+            if(take > 0) { 
+                ammo += take; reserveAmmo -= take; playSfx('reload'); updateUI(); 
+                trackAch('reload', 1);
+            }
         }
 
         function update() {
             if (!gameRunning) return;
-
-            // Отправка позиции другу в мультиплеере
-            if (conn && conn.open) {
-                conn.send({ type: 'pos', x: player.x, y: player.y });
-            }
-
-            if (timeLeft > 0) timeLeft -= 1/60;
-
-            pacifistTimer += 1/60;
-            achievements.pacifist.current = pacifistTimer; unlockAch('pacifist');
-            achievements.true_pacifist.current = pacifistTimer; unlockAch('true_pacifist');
+            if (conn && conn.open) conn.send({ type: 'pos', x: player.x, y: player.y });
+            timeLeft -= 1/60;
+            trackAch('time', 1/60);
 
             let mx = 0, my = 0;
             if (isMobile) {
-                mx = (-joyPos.y * Math.cos(player.dir) + joyPos.x * Math.cos(player.dir + Math.PI/2)) * player.speed;
-                my = (-joyPos.y * Math.sin(player.dir) + joyPos.x * Math.sin(player.dir + Math.PI/2)) * player.speed;
+                mx = (-joyPos.y * Math.cos(player.dir) + joyPos.x * Math.cos(player.dir + 1.57)) * 0.1;
+                my = (-joyPos.y * Math.sin(player.dir) + joyPos.x * Math.sin(player.dir + 1.57)) * 0.1;
             } else {
-                if (keys['KeyW']) { mx += Math.cos(player.dir); my += Math.sin(player.dir); }
-                if (keys['KeyS']) { mx -= Math.cos(player.dir); my -= Math.sin(player.dir); }
-                if (keys['KeyA']) { mx += Math.cos(player.dir - Math.PI/2); my += Math.sin(player.dir - Math.PI/2); }
-                if (keys['KeyD']) { mx += Math.cos(player.dir + Math.PI/2); my += Math.sin(player.dir + Math.PI/2); }
-                let mag = Math.sqrt(mx*mx+my*my); if(mag>0) { mx=(mx/mag)*player.speed; my=(my/mag)*player.speed; }
+                if (keys['KeyW']) { mx += Math.cos(player.dir) * 0.1; my += Math.sin(player.dir) * 0.1; }
+                if (keys['KeyS']) { mx -= Math.cos(player.dir) * 0.1; my -= Math.sin(player.dir) * 0.1; }
+                if (keys['KeyA']) { mx += Math.cos(player.dir - 1.57) * 0.1; my += Math.sin(player.dir - 1.57) * 0.1; }
+                if (keys['KeyD']) { mx += Math.cos(player.dir + 1.57) * 0.1; my += Math.sin(player.dir + 1.57) * 0.1; }
             }
-            
-            if (map[Math.floor(player.y)][Math.floor(player.x + mx*2)] === 0) player.x += mx;
-            if (map[Math.floor(player.y + my*2)][Math.floor(player.x)] === 0) player.y += my;
-            
-            if(mx !== 0 || my !== 0) { 
-                achievements.explorer.current += 0.5; unlockAch('explorer'); 
-                achievements.marathon.current += 0.5; unlockAch('marathon'); 
-                achievements.nomad.current += 0.5; unlockAch('nomad'); 
-            }
+            if (map[Math.floor(player.y)][Math.floor(player.x + mx * 2)] === 0) player.x += mx;
+            if (map[Math.floor(player.y + my * 2)][Math.floor(player.x)] === 0) player.y += my;
 
-            items.forEach(it => {
-                if(!it.collected) {
-                    let d = Math.hypot(it.x - player.x, it.y - player.y);
-                    if(d < 0.5) {
-                        it.collected = true;
-                        itemsCollectedCount++;
-                        achievements.collector.current++; unlockAch('collector');
-                        achievements.scavenger.current++; unlockAch('scavenger');
-                        achievements.artifact.current++; unlockAch('artifact');
-                        
-                        if(it.type === 'medkit') {
-                            medkitStreak++;
-                            achievements.lucky.current = medkitStreak; unlockAch('lucky');
-                            if(player.health >= 100) { achievements.medic_waste.current = 1; unlockAch('medic_waste'); }
-                            player.health = Math.min(100, player.health + 30);
-                            achievements.medic.current++; unlockAch('medic');
-                            achievements.medic_10.current++; unlockAch('medic_10');
-                            achievements.medic_50.current++; unlockAch('medic_50');
-                        } else {
-                            medkitStreak = 0; 
-                            let add = weaponTypes[currentWepIdx].pack;
-                            reserveAmmo += add;
-                            achievements.rich.current += add; unlockAch('rich');
-                            achievements.rich_500.current += add; unlockAch('rich_500');
-                            achievements.rich_1000.current += add; unlockAch('rich_1000');
-                        }
-                    }
+            items.forEach((it, i) => {
+                if (!it.collected && Math.hypot(it.x - player.x, it.y - player.y) < 0.5) {
+                    it.collected = true;
+                    if (it.type === 'medkit') { player.health = Math.min(100, player.health + 20); trackAch('heal', 1); }
+                    else { reserveAmmo += 20; trackAch('ammo', 1); }
+                    updateUI();
                 }
             });
-
-            particles.forEach((p, i) => {
-                p.x += p.vx; p.y += p.vy; p.life--;
-                if(p.life <= 0) particles.splice(i, 1);
-            });
-            deadBodies.forEach(b => { if(b.opacity > 0) b.opacity -= 0.001; });
 
             enemies.forEach(en => {
                 if (!en.alive) return;
-                let dx = player.x - en.x, dy = player.y - en.y, d = Math.sqrt(dx*dx + dy*dy);
-                if (d < 0.6) { 
-                    player.health -= 0.5; 
-                    killsWithoutDamage = 0; 
-                }
-                else if (d < 8) {
-                    let vx = (dx/d)*0.02, vy = (dy/d)*0.02;
-                    if(map[Math.floor(en.y)][Math.floor(en.x + vx*3)] === 0) en.x += vx;
-                    if(map[Math.floor(en.y + vy*3)][Math.floor(en.x)] === 0) en.y += vy;
-                    if(d < 0.8) { achievements.ninja.current = 1; unlockAch('ninja'); }
-                }
+                let d = Math.hypot(player.x - en.x, player.y - en.y);
+                if (d < 0.5) { player.health -= 0.5; if(Math.random()<0.1) playSfx('hurt'); }
+                else if (d < 7) { en.x += (player.x - en.x)/d * 0.03; en.y += (player.y - en.y)/d * 0.03; }
             });
 
-            if (Math.random() < 0.02 && enemies.filter(e=>e.alive).length < 6) {
+            // Спавн врагов чуть агрессивнее с каждым уровнем
+            if (Math.random() < (0.02 + currentLevel * 0.005) && enemies.filter(e=>e.alive).length < 8) {
                 let rx = Math.random()*(mapW-2)+1, ry = Math.random()*(mapH-2)+1;
                 if(map[Math.floor(ry)][Math.floor(rx)] === 0) enemies.push({x:rx, y:ry, alive:true});
             }
-            
+
             if(flash > 0) flash--;
-            updateUI();
+            if(player.health <= 0 || timeLeft <= 0) { 
+                gameRunning = false; trackAch('die', 1); trackAch('streak', 0, true); showScreen('game-over'); 
+            }
+            if(enemiesKilled >= 15) { 
+                gameRunning = false; trackAch('win', 1); 
+                document.getElementById('victory-text').innerText = `ЭТАЖ ${currentLevel} ЗАЧИЩЕН!`;
+                showScreen('victory-screen'); 
+                if(document.pointerLockElement) document.exitPointerLock();
+            }
+            if(!isMobile && keys['Space']) shoot();
+            if(isMobile && joyPos.shooting) shoot();
         }
 
         function draw() {
-            ctx.fillStyle = "#101"; ctx.fillRect(0,0,screenWidth,screenHeight/2);
+            ctx.fillStyle = "#200"; ctx.fillRect(0,0,screenWidth,screenHeight/2);
             ctx.fillStyle = "#111"; ctx.fillRect(0,screenHeight/2,screenWidth,screenHeight/2);
-            
+            let zBuf = new Array(screenWidth);
             for (let i = 0; i < screenWidth; i++) {
-                let angle = (player.dir - 0.5) + (i / screenWidth), d = 0, hit = 0;
+                let ang = (player.dir - 0.5) + (i / screenWidth), d = 0, hit = 0;
                 while (hit === 0 && d < 15) {
                     d += 0.05;
-                    let tx = Math.floor(player.x + Math.cos(angle)*d), ty = Math.floor(player.y + Math.sin(angle)*d);
-                    if (tx < 0 || tx >= mapW || ty < 0 || ty >= mapH) { hit = 1; d = 15; } else hit = map[ty][tx];
+                    let tx = Math.floor(player.x + Math.cos(ang)*d), ty = Math.floor(player.y + Math.sin(ang)*d);
+                    if (tx < 0 || tx >= mapW || ty < 0 || ty >= mapH) hit = 1; else hit = map[ty][tx];
                 }
-                zBuffer[i] = d * Math.cos(angle - player.dir);
-                let h = screenHeight / zBuffer[i], c = 160 / (1 + d * 0.25);
-                ctx.fillStyle = hit === 1 ? `rgb(${c},0,0)` : `rgb(40,40,${c})`;
+                zBuf[i] = d;
+                let h = screenHeight / (d * Math.cos(ang-player.dir)), c = 150 / (1 + d*0.2);
+                ctx.fillStyle = hit === 1 ? `rgb(${c},0,0)` : `rgb(0,0,${c})`;
                 ctx.fillRect(i, screenHeight/2 - h/2, 1, h);
             }
             
             let sprites = [];
-            deadBodies.forEach(b => { if(b.opacity > 0.1) sprites.push({x:b.x, y:b.y, type:'blood', op:b.opacity})});
-            particles.forEach(p => sprites.push({x:p.x, y:p.y, type:'gore'}));
-            enemies.forEach(e => { if(e.alive) sprites.push({...e, type:'enemy'})});
-            items.forEach(it => { if(!it.collected) sprites.push({...it, type:it.type})});
+            enemies.forEach(e => { if(e.alive) sprites.push({x:e.x, y:e.y, type:'en'})});
+            items.forEach(it => { if(!it.collected) sprites.push({x:it.x, y:it.y, type:it.type})});
+            if(otherPlayer.active) sprites.push({x:otherPlayer.x, y:otherPlayer.y, type:'p2'});
             
-            // Отрисовка другого игрока
-            if (otherPlayer.active) {
-                sprites.push({x: otherPlayer.x, y: otherPlayer.y, type: 'player2'});
-            }
-            
-            sprites.sort((a,b) => Math.hypot(b.x-player.x, b.y-player.y) - Math.hypot(a.x-player.x, a.y-player.y));
-            
+            sprites.sort((a,b)=>Math.hypot(b.x-player.x, b.y-player.y)-Math.hypot(a.x-player.x, a.y-player.y));
             sprites.forEach(s => {
-                let dx = s.x - player.x, dy = s.y - player.y, dist = Math.sqrt(dx*dx+dy*dy);
+                let dx = s.x - player.x, dy = s.y - player.y, dist = Math.hypot(dx,dy);
                 let ang = Math.atan2(dy, dx) - player.dir;
-                while (ang < -Math.PI) ang += Math.PI*2; 
-                while (ang > Math.PI) ang -= Math.PI*2;
-                
-                if (Math.abs(ang) < 0.8 && dist > 0.1 && dist < 15) {
-                    let sx = (ang / 1 + 0.5) * screenWidth;
-                    if (zBuffer[Math.floor(sx)] > dist) {
-                        let h = screenHeight / dist, w = h * 0.5;
-                        if(s.type === 'blood') {
-                            ctx.fillStyle = `rgba(100,0,0,${s.op})`;
-                            ctx.fillRect(sx-w, screenHeight/2+h/4, w*2, h/10);
-                        } else if(s.type === 'gore') {
-                            ctx.fillStyle = "#f00"; ctx.fillRect(sx, screenHeight/2+Math.random()*20, 2, 2);
-                        } else if(s.type === 'enemy') {
-                            try { ctx.drawImage(enemySprite, sx-w/2, screenHeight/2-h/2, w, h); }
-                            catch(e) { ctx.fillStyle = 'red'; ctx.fillRect(sx-w/2, screenHeight/2-h/2, w, h); }
-                        } else if(s.type === 'player2') {
-                            ctx.fillStyle = '#00f'; // Второй игрок синий
-                            ctx.fillRect(sx-w/4, screenHeight/2-h/2, w/2, h);
+                while(ang < -Math.PI) ang += Math.PI*2; while(ang > Math.PI) ang -= Math.PI*2;
+                if(Math.abs(ang) < 1 && dist > 0.3) {
+                    let sx = (ang + 0.5) * screenWidth, h = screenHeight/dist, w = h;
+                    if(zBuf[Math.floor(sx)] > dist) {
+                        if(s.type === 'en') {
+                             ctx.drawImage(furrySprite, sx - w/2, screenHeight/2 - h/2, w, h);
                         } else {
-                            ctx.fillStyle = s.type === 'medkit' ? '#fff' : '#ff0';
-                            ctx.fillRect(sx-w/4, screenHeight/2, w/2, h/2);
-                            ctx.fillStyle = s.type === 'medkit' ? '#f00' : '#000';
-                            ctx.fillRect(sx-2, screenHeight/2 + h/4 - 2, 4, 4);
+                             ctx.fillStyle = s.type === 'p2' ? 'blue' : 'yellow';
+                             ctx.fillRect(sx - w/4, screenHeight/2, w/2, h/2);
                         }
                     }
                 }
             });
-            if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash*0.15})`; ctx.fillRect(0,0,screenWidth,screenHeight); }
+            if(flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash*0.2})`; ctx.fillRect(0,0,screenWidth,screenHeight); }
         }
 
         function showScreen(id) {
@@ -568,93 +448,54 @@
             if(id !== 'none') document.getElementById(id).style.display = 'flex';
         }
 
-        function toggleAchievements(show) {
-            if(show) {
-                showScreen('achievements-menu');
-                let cont = document.getElementById('ach-container');
-                cont.innerHTML = '';
-                for(let id in achievements) {
-                    let a = achievements[id];
-                    cont.innerHTML += `<div style="padding:8px; border-bottom:1px solid #222; color:${a.unlocked?'#0f0':'#555'}; background:${a.unlocked?'#020':'transparent'}">
-                        ${a.icon} <b>${a.name}</b> [${Math.floor(a.current)}/${a.goal}]<br>
-                        <small style="color:${a.unlocked?'#0a0':'#444'}">${a.desc}</small>
-                    </div>`;
-                }
-            } else showScreen('menu');
-        }
-
         function selectWeapon(idx) {
-            currentWepIdx = idx;
+            currentWepIdx = idx; ammo = weaponTypes[idx].clip; reserveAmmo = weaponTypes[idx].res;
             document.querySelectorAll('.btn-weapon').forEach((b, i) => b.classList.toggle('selected-wep', i === idx));
-            ammo = weaponTypes[idx].clip; reserveAmmo = weaponTypes[idx].reserve;
-            shotsInMag = 0; killsInMag = 0;
-        }
-
-        function reload() {
-            let m = weaponTypes[currentWepIdx].clip;
-            if(ammo < m && reserveAmmo > 0) {
-                let take = Math.min(m - ammo, reserveAmmo);
-                ammo += take; reserveAmmo -= take; 
-                shotsInMag = 0;
-                killsInMag = 0;
-                achievements.reloader.current++; unlockAch('reloader');
-            }
-            updateUI();
         }
 
         function updateUI() {
-            if (timeLeft < 0) timeLeft = 0;
-            let m = Math.floor(timeLeft/60), s = Math.floor(timeLeft%60);
-            document.getElementById('timer-display').innerText = `TIME: ${m}:${s.toString().padStart(2,'0')}`;
-            
-            document.getElementById('ammo-display').innerText = `AMMO: ${ammo}/${reserveAmmo} | KILLS: ${enemiesKilled}/${killsToWin}`;
+            document.getElementById('ammo-display').innerText = `AMMO: ${ammo}/${reserveAmmo} | KILLS: ${enemiesKilled}/15`;
             document.getElementById('health-fill').style.width = player.health + "%";
-            
-            if(enemiesKilled >= killsToWin && gameRunning) { 
-                gameRunning = false; 
-                const win_ids = ['win1','win5','win10','win25','win50'];
-                win_ids.forEach(id => { achievements[id].current++; unlockAch(id); });
-                
-                if(currentWepIdx === 0) { achievements.pistol_fan.current = 1; unlockAch('pistol_fan'); }
-                if(currentWepIdx === 1) { achievements.shotgun_fan.current = 1; unlockAch('shotgun_fan'); }
-                if(currentWepIdx === 2) { achievements.rifle_fan.current = 1; unlockAch('rifle_fan'); }
-                if(timeLeft > 120) { achievements.fast_win.current = 1; unlockAch('fast_win'); }
-                
-                showScreen('victory-screen'); 
-            }
-            if(player.health <= 0 && gameRunning) { 
-                gameRunning = false; 
-                showScreen('game-over'); 
-            }
-            if(timeLeft <= 0 && gameRunning) {
-                gameRunning = false;
-                showScreen('game-over');
-            }
+            document.getElementById('level-display').innerText = `LEVEL: ${currentLevel}`;
+            let m = Math.floor(timeLeft/60), s = Math.floor(timeLeft%60);
+            document.getElementById('timer-display').innerText = `TIME: ${m}:${s<10?'0'+s:s}`;
         }
 
         function setupMobileControls() {
             const joy = document.getElementById('joystick-container'), stick = document.getElementById('joystick-stick');
-            window.addEventListener('touchstart', e => { for(let t of e.changedTouches) if(t.clientX > window.innerWidth/2) lastTouchX = t.clientX; }, {passive:false});
+            window.addEventListener('touchstart', e => { for(let t of e.changedTouches) if(t.clientX > window.innerWidth/2) lastTouchX = t.clientX; });
             window.addEventListener('touchmove', e => {
                 e.preventDefault();
                 for(let t of e.touches) {
                     if(t.clientX < window.innerWidth/2) {
-                        let r = joy.getBoundingClientRect();
-                        let dx = t.clientX-(r.left+r.width/2), dy = t.clientY-(r.top+r.height/2);
+                        let r = joy.getBoundingClientRect(), dx = t.clientX-(r.left+r.width/2), dy = t.clientY-(r.top+r.height/2);
                         let d = Math.min(60, Math.hypot(dx,dy)), ang = Math.atan2(dy,dx);
-                        joyPos = {x:(Math.cos(ang)*d)/60, y:(Math.sin(ang)*d)/60};
+                        joyPos.x = (Math.cos(ang)*d)/60; joyPos.y = (Math.sin(ang)*d)/60;
                         stick.style.transform = `translate(calc(-50% + ${joyPos.x*60}px), calc(-50% + ${joyPos.y*60}px))`;
-                    } else if(lastTouchX !== null) { player.dir += (t.clientX-lastTouchX)*0.007; lastTouchX = t.clientX; }
+                    } else if(lastTouchX !== null) { player.dir += (t.clientX - lastTouchX) * 0.005 * settings.sensitivity; lastTouchX = t.clientX; }
                 }
             }, {passive:false});
-            window.addEventListener('touchend', e => { joyPos={x:0,y:0}; stick.style.transform='translate(-50%,-50%)'; lastTouchX=null; });
-            document.getElementById('shoot-btn').onclick = shoot;
+            window.addEventListener('touchend', () => { joyPos = {x:0,y:0}; stick.style.transform='translate(-50%,-50%)'; lastTouchX=null; });
+            document.getElementById('shoot-btn').ontouchstart = () => { joyPos.shooting = true; shoot(); };
+            document.getElementById('shoot-btn').ontouchend = () => { joyPos.shooting = false; };
             document.getElementById('reload-btn').onclick = reload;
         }
 
-        window.addEventListener('keydown', e => { keys[e.code] = true; if(e.code==='KeyR') reload(); });
+        function toggleAchievements(show) {
+            if(show) {
+                showScreen('achievements-menu'); const cont = document.getElementById('ach-container'); cont.innerHTML = '';
+                let list = Object.values(achievements);
+                list.forEach(a => {
+                    cont.innerHTML += `<div style="padding:8px; border-bottom:1px solid #222; color:${a.unlocked?'#0f0':'#555'}">
+                        ${a.icon} <b>${a.name}</b><br><small>${a.desc} (${Math.floor(a.current)}/${a.goal})</small>
+                    </div>`;
+                });
+            } else showScreen('menu');
+        }
+
+        window.addEventListener('keydown', e => { keys[e.code] = true; if(e.code==='KeyR') reload(); if(e.code==='Escape') pauseGame(); });
         window.addEventListener('keyup', e => keys[e.code] = false);
-        window.addEventListener('mousemove', e => { if(document.pointerLockElement) player.dir += e.movementX*0.003; });
+        window.addEventListener('mousemove', e => { if(document.pointerLockElement) player.dir += e.movementX * 0.002 * settings.sensitivity; });
         window.addEventListener('mousedown', () => { if(gameRunning && !isMobile) shoot(); });
 
         function loop() { update(); draw(); requestAnimationFrame(loop); }
