@@ -43,25 +43,29 @@
 
         .setting-row { margin: 10px; width: 80%; display: flex; justify-content: space-between; align-items: center; }
 
+        /* JOYSTICK FIXES */
         #joystick-container {
             position: absolute; bottom: 40px; left: 40px;
             width: 120px; height: 120px; background: rgba(255,255,255,0.1);
             border-radius: 50%; display: none; border: 2px solid rgba(255,255,255,0.3);
+            touch-action: none; z-index: 20;
         }
         #joystick-stick {
             position: absolute; top: 50%; left: 50%;
             width: 50px; height: 50px; background: rgba(255,255,255,0.4);
             border-radius: 50%; transform: translate(-50%, -50%);
+            pointer-events: none;
         }
 
         #shoot-btn, #reload-btn, #mobile-menu-btn {
             position: absolute; border-radius: 50%; 
             background: rgba(255,0,0,0.5); border: 4px solid white;
             display: none; align-items: center; justify-content: center; z-index: 20;
+            user-select: none; -webkit-user-select: none;
         }
         #shoot-btn { bottom: 40px; right: 40px; width: 100px; height: 100px; font-size: 40px; }
         #reload-btn { bottom: 150px; right: 55px; width: 70px; height: 70px; font-size: 25px; background: rgba(0,100,255,0.5); }
-        #mobile-menu-btn { top: 20px; right: 20px; width: 60px; height: 60px; font-size: 20px; border-radius: 10px; background: rgba(50,50,50,0.7); }
+        #mobile-menu-btn { top: 20px; right: 20px; width: 60px; height: 60px; font-size: 16px; border-radius: 10px; background: rgba(50,50,50,0.7); color: white; font-weight: bold; }
 
         #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: lime; font-size: 24px; pointer-events: none; }
         #blood-overlay { position: absolute; inset: 0; background: rgba(255,0,0,0.4); pointer-events: none; opacity: 0; transition: opacity 0.1s; }
@@ -148,6 +152,13 @@
         let stats = { totalKills: 0, maxFloor: 1 };
         let settings = { sensitivity: 1.0, volume: 0.5 };
         let lastHitTime = 0;
+
+        // Mobile touch state control
+        let touchData = {
+            joyId: null,
+            lookId: null,
+            lastX: 0
+        };
 
         const allAchievements = [];
         for(let i=1; i<=100; i++) {
@@ -330,7 +341,6 @@
                 ctx.fillRect(i, screenHeight/2 - h/2, 1, h);
             }
 
-            // Рендер частиц крови
             particles.forEach(p => {
                 let dx = p.x - player.x, dy = p.y - player.y, dist = Math.hypot(dx,dy);
                 let ang = Math.atan2(dy, dx) - player.dir;
@@ -426,19 +436,64 @@
 
         function setupMobile() {
             const joy = document.getElementById('joystick-container'), stick = document.getElementById('joystick-stick');
+            const halfWidth = window.innerWidth / 2;
+
+            window.addEventListener('touchstart', e => {
+                for(let t of e.changedTouches) {
+                    // Если нажатие в левой части экрана и джойстик еще не захвачен
+                    if(t.clientX < halfWidth && touchData.joyId === null) {
+                        touchData.joyId = t.identifier;
+                    } 
+                    // Если в правой части и это не кнопка (кнопки обработаем отдельно)
+                    else if (t.clientX >= halfWidth && touchData.lookId === null) {
+                        if (e.target.tagName !== 'BUTTON' && e.target.id !== 'shoot-btn' && e.target.id !== 'reload-btn') {
+                            touchData.lookId = t.identifier;
+                            touchData.lastX = t.clientX;
+                        }
+                    }
+                }
+            }, {passive: false});
+
             window.addEventListener('touchmove', e => {
+                e.preventDefault();
                 for(let t of e.touches) {
-                    if(t.clientX < window.innerWidth/2) {
-                        let r = joy.getBoundingClientRect(), dx = t.clientX-(r.left+r.width/2), dy = t.clientY-(r.top+r.height/2);
+                    if(t.identifier === touchData.joyId) {
+                        let r = joy.getBoundingClientRect();
+                        let dx = t.clientX-(r.left+r.width/2), dy = t.clientY-(r.top+r.height/2);
                         let d = Math.min(50, Math.hypot(dx,dy)), a = Math.atan2(dy,dx);
                         joyPos.x = Math.cos(a)*(d/50); joyPos.y = Math.sin(a)*(d/50);
                         stick.style.transform = `translate(calc(-50% + ${joyPos.x*50}px), calc(-50% + ${joyPos.y*50}px))`;
-                    } else { player.dir += (t.clientX - (window.innerWidth/2)) * 0.0001 * settings.sensitivity; }
+                    } 
+                    else if(t.identifier === touchData.lookId) {
+                        let moveX = t.clientX - touchData.lastX;
+                        player.dir += moveX * 0.005 * settings.sensitivity;
+                        touchData.lastX = t.clientX;
+                    }
                 }
             }, {passive: false});
-            window.addEventListener('touchend', () => { joyPos = {x:0,y:0}; stick.style.transform='translate(-50%,-50%)'; });
-            document.getElementById('shoot-btn').ontouchstart = (e) => { e.preventDefault(); shoot(); };
-            document.getElementById('reload-btn').ontouchstart = (e) => { e.preventDefault(); reload(); };
+
+            window.addEventListener('touchend', e => {
+                for(let t of e.changedTouches) {
+                    if(t.identifier === touchData.joyId) {
+                        touchData.joyId = null;
+                        joyPos = {x:0,y:0};
+                        stick.style.transform='translate(-50%,-50%)';
+                    }
+                    if(t.identifier === touchData.lookId) {
+                        touchData.lookId = null;
+                    }
+                }
+            });
+
+            document.getElementById('shoot-btn').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                shoot();
+            }, {passive: false});
+
+            document.getElementById('reload-btn').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                reload();
+            }, {passive: false});
         }
 
         window.addEventListener('keydown', e => { keys[e.code] = true; });
@@ -448,4 +503,3 @@
     </script>
 </body>
 </html>
-
