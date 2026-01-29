@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>KILL FURRY</title>
+    <title>KILL FURRY - ACHIEVEMENTS EDITION</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
@@ -26,22 +26,27 @@
         .btn-weapon { background: #444; width: 250px; }
         .selected-wep { border: 2px solid lime; background: #222; }
 
-        input { background: #222; color: #fff; border: 1px solid #a00; padding: 10px; font-family: inherit; margin: 10px; text-align: center; }
-
-        .setting-row { margin: 15px; width: 300px; display: flex; justify-content: space-between; align-items: center; }
-        input[type=range] { width: 150px; cursor: pointer; }
-
         #ui { 
             position: absolute; bottom: 20px; left: 20px; 
             pointer-events: none; text-shadow: 2px 2px 2px black; z-index: 10;
         }
         #health-bar { width: 200px; height: 20px; background: #300; border: 2px solid white; margin-bottom: 5px; }
-        #health-fill { width: 100%; height: 100%; background: #f00; transition: width 0.3s; }
+        #health-fill { width: 100%; height: 100%; background: #f00; transition: width 0.1s; }
         
+        #ach-container {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px; width: 85%; max-height: 60vh; overflow-y: auto;
+            background: #111; padding: 15px; border: 2px solid #555;
+        }
+        .ach-item { padding: 5px; border: 1px solid #333; font-size: 10px; opacity: 0.5; background: #000; }
+        .ach-unlocked { opacity: 1; border-color: gold; color: gold; }
+
+        .setting-row { margin: 10px; width: 80%; display: flex; justify-content: space-between; align-items: center; }
+
         #joystick-container {
             position: absolute; bottom: 40px; left: 40px;
             width: 120px; height: 120px; background: rgba(255,255,255,0.1);
-            border-radius: 50%; display: none; touch-action: none; border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%; display: none; border: 2px solid rgba(255,255,255,0.3);
         }
         #joystick-stick {
             position: absolute; top: 50%; left: 50%;
@@ -52,102 +57,76 @@
         #shoot-btn, #reload-btn, #mobile-menu-btn {
             position: absolute; border-radius: 50%; 
             background: rgba(255,0,0,0.5); border: 4px solid white;
-            display: none; align-items: center; justify-content: center;
-            user-select: none; z-index: 20; touch-action: none;
+            display: none; align-items: center; justify-content: center; z-index: 20;
         }
         #shoot-btn { bottom: 40px; right: 40px; width: 100px; height: 100px; font-size: 40px; }
         #reload-btn { bottom: 150px; right: 55px; width: 70px; height: 70px; font-size: 25px; background: rgba(0,100,255,0.5); }
         #mobile-menu-btn { top: 20px; right: 20px; width: 60px; height: 60px; font-size: 20px; border-radius: 10px; background: rgba(50,50,50,0.7); }
 
-        #crosshair { 
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            color: lime; font-size: 24px; font-weight: bold; pointer-events: none;
-        }
-        #blood-overlay {
-            position: absolute; inset: 0; background: radial-gradient(circle, transparent 30%, rgba(150,0,0,0.6) 100%);
-            pointer-events: none; opacity: 0; transition: opacity 0.1s; z-index: 5;
-        }
-
-        #ach-notification {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.9); color: #0f0; padding: 15px 30px;
-            border-radius: 5px; font-weight: bold; display: none; z-index: 200;
-            border: 2px solid #0f0; box-shadow: 0 0 15px rgba(0,255,0,0.5);
-            pointer-events: none; animation: slideDown 0.5s ease;
-        }
-        @keyframes slideDown { from { top: -100px; } to { top: 20px; } }
+        #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: lime; font-size: 24px; pointer-events: none; }
+        #blood-overlay { position: absolute; inset: 0; background: rgba(255,0,0,0.4); pointer-events: none; opacity: 0; transition: opacity 0.1s; }
+        #floor-announcement { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; color: yellow; text-shadow: 0 0 10px red; display: none; }
     </style>
 </head>
 <body>
 
     <div id="blood-overlay"></div>
-    <div id="ach-notification"></div>
+    <div id="floor-announcement">ЭТАЖ 1</div>
 
     <div id="menu" class="overlay">
-        <h1>>УБЕЙ ФУРРИ<</h1>
-        <button id="resume-btn" class="btn" style="display:none; background: #0a0;" onclick="resumeGame()">ПРОДОЛЖИТЬ</button>
-        <button class="btn" onclick="showScreen('weapon-menu')">НОВАЯ ИГРА</button>
-        <button class="btn" style="background:#444" onclick="showScreen('settings-menu')">НАСТРОЙКИ</button>
-        <button class="btn" style="background:#555" onclick="showScreen('multiplayer-menu'); initMultiplayer();">МУЛЬТИПЛЕЕР (BETA)</button>
-        <button class="btn" style="background:#555" onclick="toggleAchievements(true)">ДОСТИЖЕНИЯ</button>
-        <button class="btn" style="background:#d4af37; color: black; font-weight: bold;" onclick="window.open('https://www.donationalerts.com/r/karton820', '_blank')">ПОДДЕРЖАТЬ</button>
-    </div>
-
-    <div id="settings-menu" class="overlay">
-        <h2>НАСТРОЙКИ</h2>
-        <div class="setting-row"><span>Чувствительность</span><input type="range" id="sens-slider" min="0.1" max="3" step="0.1" value="1"></div>
-        <div class="setting-row"><span>Громкость</span><input type="range" id="vol-slider" min="0" max="1" step="0.05" value="0.5"></div>
-        <button class="btn" onclick="showScreen('menu')">НАЗАД</button>
-    </div>
-
-    <div id="multiplayer-menu" class="overlay">
-        <h2>МУЛЬТИПЛЕЕР</h2>
-        <div id="peer-status">Ожидание...</div>
-        <div id="my-id-container" style="margin: 10px; color: #0f0;"></div>
-        <input type="text" id="remote-id" placeholder="ID друга">
-        <button class="btn" onclick="connectToFriend()">ПОДКЛЮЧИТЬСЯ</button>
-        <button class="btn" style="background:#333" onclick="showScreen('menu')">НАЗАД</button>
+        <h1>KILL FURRY</h1>
+        <button class="btn" onclick="showScreen('weapon-menu')">ИГРАТЬ</button>
+        <button class="btn" style="background:#444" onclick="initAchievementsMenu(); showScreen('achievements-menu')">ДОСТИЖЕНИЯ</button>
+        <button class="btn" style="background:#444" onclick="showScreen('settings-menu')">НАСТРОКИ</button>
+        <button class="btn" style="background:#d80" onclick="window.open('https://www.donationalerts.com/r/karton820')">ПОДДЕРЖАТЬ АВТОРА</button>
+        <button class="btn" style="background:#42aaff" onclick="window.open('https://t.me/FurryKill_Bot')">ТЕЛЕГРАММ КАНАЛ</button>
     </div>
 
     <div id="weapon-menu" class="overlay">
         <h2>ВЫБЕРИТЕ ОРУЖИЕ</h2>
-        <button id="wep0" class="btn btn-weapon selected-wep" onclick="selectWeapon(0)">ПИСТОЛЕТ</button>
-        <button id="wep1" class="btn btn-weapon" onclick="selectWeapon(1)">ДРОБОВИК</button>
-        <button id="wep2" class="btn btn-weapon" onclick="selectWeapon(2)">АВТОМАТ</button>
-        <button class="btn" onclick="showScreen('controls-pc')">ПК</button>
-        <button class="btn" onclick="showScreen('controls-mobile')">ТЕЛЕФОН</button>
+        <div style="margin-bottom:20px;">
+            <button id="wep0" class="btn btn-weapon selected-wep" onclick="selectWeapon(0)">G18 "БРУТАЛ" (12/60)</button>
+            <button id="wep1" class="btn btn-weapon" onclick="selectWeapon(1)">M500 "КРОВАВЫЙ" (6/24)</button>
+            <button id="wep2" class="btn btn-weapon" onclick="selectWeapon(2)">AK-47 "ПОТРОШИТЕЛЬ" (30/90)</button>
+        </div>
+        <button class="btn" onclick="startGame('pc')">ПК (МЫШЬ + WASD)</button>
+        <button class="btn" onclick="startGame('mobile')">ТЕЛЕФОН (ТАЧ)</button>
     </div>
 
-    <div id="controls-pc" class="overlay">
-        <h2>УПРАВЛЕНИЕ (ПК)</h2>
-        <p>WASD - Движение, Мышь - Огонь, R - Перезарядка, Esc - Пауза</p>
-        <button class="btn" onclick="startGame('pc')">В БОЙ!</button>
-    </div>
-
-    <div id="controls-mobile" class="overlay">
-        <h2>УПРАВЛЕНИЕ (MOBILE)</h2>
-        <p>Левый стик - Ходьба, Правая часть - Обзор</p>
-        <button class="btn" onclick="startGame('mobile')">В БОЙ!</button>
+    <div id="settings-menu" class="overlay">
+        <h2>НАСТРОЙКИ</h2>
+        <div class="setting-row">
+            <span>Чувствительность:</span>
+            <input type="range" id="set-sens" min="0.5" max="5.0" step="0.1" value="1.0" onchange="updateSettings()">
+        </div>
+        <div class="setting-row">
+            <span>Громкость:</span>
+            <input type="range" id="set-vol" min="0" max="1.0" step="0.1" value="0.5" onchange="updateSettings()">
+        </div>
+        <button class="btn" onclick="showScreen('menu')">ГОТОВО</button>
     </div>
 
     <div id="achievements-menu" class="overlay">
-        <h2>ДОСТИЖЕНИЯ</h2>
-        <div id="ach-container" style="text-align: left; width: 90%; max-width: 500px; margin-bottom: 20px; overflow-y: auto; max-height: 65vh; background: #111; padding: 10px; border: 1px solid #444;"></div>
-        <button class="btn" onclick="showScreen('menu')">В МЕНЮ</button>
+        <h2>ДОСТИЖЕНИЯ (100)</h2>
+        <div id="ach-container"></div>
+        <button class="btn" onclick="showScreen('menu')">НАЗАД</button>
     </div>
 
-    <div id="game-over" class="overlay" style="background: rgba(50, 0, 0, 0.9);"><h1>ТЫ ПОГИБ</h1><button class="btn" onclick="location.reload()">В МЕНЮ</button></div>
-    <div id="victory-screen" class="overlay" style="background: rgba(0, 50, 0, 0.9);"><h1>ЗАЧИСТКА ЗАВЕРШЕНА!</h1><button class="btn" onclick="location.reload()">В МЕНЮ</button></div>
+    <div id="game-over" class="overlay">
+        <h1>ТЫ ПОГИБ</h1>
+        <div id="final-stats"></div>
+        <button class="btn" onclick="location.reload()">В МЕНЮ</button>
+    </div>
 
     <div id="joystick-container"><div id="joystick-stick"></div></div>
     <div id="shoot-btn">🔥</div>
     <div id="reload-btn">🔄</div>
-    <div id="mobile-menu-btn" onclick="pauseGame()">ESC</div>
+    <div id="mobile-menu-btn" onclick="location.reload()">ESC</div>
 
     <canvas id="screen"></canvas>
     <div id="crosshair">+</div>
     <div id="ui">
-        <div id="timer-display">TIME: 03:00</div>
+        <div id="floor-display">FLOOR: 1</div>
         <div id="health-bar"><div id="health-fill"></div></div>
         <div id="ammo-display">AMMO: 10/60 | KILLS: 0/15</div>
     </div>
@@ -161,264 +140,276 @@
         const furrySprite = new Image();
         furrySprite.src = 'furry.png';
 
+        let player = { x: 2, y: 2, dir: 0, health: 100 };
+        let currentFloor = 1;
+        let gameRunning = false, isMobile = false, enemiesKilled = 0, currentWepIdx = 0;
+        let ammo = 0, reserveAmmo = 0;
+        let enemies = [], particles = [], keys = {}, joyPos = {x:0, y:0}, flash = 0;
+        let stats = { totalKills: 0, maxFloor: 1 };
         let settings = { sensitivity: 1.0, volume: 0.5 };
-        
-        let achievements = {};
-        function initAchievements() {
-            const types = [
-                {id: 'kill', n: 'Охотник', icon: '💀', goals: [1,5,10,20,50,100,200,500,1000,5000]},
-                {id: 'win', n: 'Герой', icon: '🎖️', goals: [1,2,3,4,5,10,15,20,25,50]},
-                {id: 'shot', n: 'Стрелок', icon: '🎯', goals: [10,50,100,200,300,400,500,1000,2000,5000]},
-                {id: 'heal', n: 'Живчик', icon: '💊', goals: [1,5,10,20,30,40,50,60,70,100]},
-                {id: 'ammo', n: 'Снабженец', icon: '📦', goals: [1,5,10,20,30,40,50,60,70,100]},
-                {id: 'time', n: 'Ветеран', icon: '⏳', goals: [60,180,300,600,1200,1800,3600,7200,14400,86400]},
-                {id: 'die', n: 'Смертник', icon: '⚰️', goals: [1,5,10,15,20,25,30,40,50,100]},
-                {id: 'reload', n: 'Ловкач', icon: '♻️', goals: [5,10,20,30,40,50,100,150,200,500]},
-                {id: 'multi', n: 'Сетевик', icon: '🌐', goals: [1,2,3,4,5,6,7,8,9,10]},
-                {id: 'streak', n: 'Берсерк', icon: '🔥', goals: [3,5,7,10,12,15,17,20,25,30]}
-            ];
-            types.forEach(t => {
-                t.goals.forEach((g, i) => {
-                    achievements[`${t.id}_${i}`] = { 
-                        name: `${t.n} LVL ${i+1}`, 
-                        goal: g, current: 0, unlocked: false, icon: t.icon, 
-                        desc: `Нужно: ${g}` 
-                    };
-                });
-            });
-        }
-        initAchievements();
+        let lastHitTime = 0;
 
-        function trackAch(id, val, set=false) {
-            for(let i=0; i<10; i++) {
-                let a = achievements[`${id}_${i}`]; if(!a || a.unlocked) continue;
-                if(set) a.current = val; else a.current += val;
-                if(a.current >= a.goal) { a.unlocked = true; showAchPop(a); saveAch(); }
-            }
-        }
-        function saveAch() { localStorage.setItem('furry_ach', JSON.stringify(achievements)); }
-        function loadAch() { 
-            const s = localStorage.getItem('furry_ach'); 
-            if(s) { 
-                const data = JSON.parse(s);
-                for(let k in data) if(achievements[k]) achievements[k] = data[k];
-            }
-        }
-        loadAch();
-
-        function showAchPop(a) {
-            const n = document.getElementById('ach-notification');
-            n.innerHTML = `${a.icon} ДОСТИЖЕНИЕ: ${a.name}`;
-            n.style.display = 'block'; setTimeout(() => n.style.display='none', 3000);
+        const allAchievements = [];
+        for(let i=1; i<=100; i++) {
+            let label = "";
+            if(i <= 30) label = `Убить ${i*10} фурри`;
+            else if(i <= 60) label = `Пройти этаж ${i-30}`;
+            else if(i <= 100) label = `Выжить ${i+5} секунд`;
+            allAchievements.push({ id: i, label: label, unlocked: false });
         }
 
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playSfx(type) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            if (settings.volume <= 0) return;
-            const osc = audioCtx.createOscillator(), gain = audioCtx.createGain(), now = audioCtx.currentTime;
-            if(type==='shoot') {
-                osc.type = currentWepIdx === 1 ? 'sawtooth' : 'square';
-                osc.frequency.setValueAtTime(currentWepIdx === 1 ? 150 : 400, now);
-                osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
-                gain.gain.setValueAtTime(0.2 * settings.volume, now);
-            } else if(type==='reload') {
-                osc.type = 'triangle'; osc.frequency.setValueAtTime(600, now);
-                gain.gain.setValueAtTime(0.1 * settings.volume, now);
-            } else if(type==='hurt') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now);
-                gain.gain.setValueAtTime(0.3 * settings.volume, now);
-            }
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(now + 0.2);
-        }
+        let unlockedAchs = JSON.parse(localStorage.getItem('achievements_furry') || '[]');
+        unlockedAchs.forEach(id => {
+            let a = allAchievements.find(x => x.id === id);
+            if(a) a.unlocked = true;
+        });
 
-        let peer, conn, otherPlayer = { x: 0, y: 0, active: false };
-        function initMultiplayer() {
-            if (peer) return;
-            trackAch('multi', 1);
-            try {
-                peer = new Peer();
-                peer.on('open', id => { document.getElementById('my-id-container').innerText = "ID: " + id; });
-                peer.on('connection', c => { conn = c; setupConn(); });
-            } catch(e) { console.error("PeerJS error"); }
-        }
-        function connectToFriend() { const id = document.getElementById('remote-id').value; if(id) { conn = peer.connect(id); setupConn(); } }
-        function setupConn() { conn.on('data', d => { if(d.type==='pos') { otherPlayer.x=d.x; otherPlayer.y=d.y; otherPlayer.active=true; } }); }
-
-        const map = [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,2,0,0,1,0,2,0,2,0,1,1,0,1,1,1,1,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,1],
-            [1,0,1,1,1,1,0,1,0,1,1,0,1,1,1,1,0,1,0,1],
-            [1,0,2,0,0,0,0,1,0,0,0,0,0,0,2,0,0,0,0,1],
-            [1,0,0,0,1,0,0,1,1,1,1,1,0,0,0,0,1,1,0,1],
-            [1,0,1,0,1,0,0,0,0,0,0,1,0,1,1,0,1,0,0,1],
-            [1,0,0,0,1,0,2,0,2,0,0,1,0,0,0,0,1,0,2,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        const maps = [
+            [[1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,1],[1,0,1,1,0,1,1,1,0,1],[1,0,1,0,0,0,0,1,0,1],[1,0,0,0,0,1,0,0,0,1],[1,1,1,1,1,1,1,1,1,1]],
+            [[1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,1,0,0,0,0,0,1],[1,0,1,1,0,1,0,1,1,1,0,1],[1,0,0,0,0,0,0,0,0,1,0,1],[1,1,1,0,1,1,1,1,0,1,0,1],[1,1,1,1,1,1,1,1,1,1,1,1]]
         ];
-        const mapW = map[0].length, mapH = map.length;
+        let currentMap = maps[0];
 
         const weaponTypes = [
-            { clip: 10, res: 60, spread: 0.1, auto: false },
-            { clip: 4, res: 24, spread: 0.4, auto: false },
-            { clip: 30, res: 90, spread: 0.15, auto: true }
+            { name: "Pistol", clip: 12, reserve: 60, spread: 0.1, color: "#888", accent: "#5af" },
+            { name: "Shotgun", clip: 6, reserve: 24, spread: 0.4, color: "#555", accent: "#f50" },
+            { name: "Rifle", clip: 30, reserve: 90, spread: 0.15, color: "#454", accent: "#a22" }
         ];
 
-        let currentWepIdx = 0, ammo = 10, reserveAmmo = 60, player = { x: 2, y: 2, dir: 0, health: 100 };
-        let gameRunning = false, isMobile = false, enemiesKilled = 0, timeLeft = 180, flash = 0;
-        let enemies = [], items = [], keys = {}, lastTouchX = null, joyPos = { x: 0, y: 0 }, lastShotTime = 0;
-
-        function startGame(mode) {
-            isMobile = mode === 'mobile'; showScreen('none');
-            player = { x: 2, y: 2, dir: 0, health: 100 };
-            enemies = []; items = []; enemiesKilled = 0; timeLeft = 180;
-            if(isMobile) {
-                document.getElementById('joystick-container').style.display = 'block';
-                ['shoot-btn','reload-btn','mobile-menu-btn'].forEach(id=>document.getElementById(id).style.display='flex');
-                setupMobileControls();
-            } else canvas.requestPointerLock();
-            gameRunning = true; document.getElementById('resume-btn').style.display = 'inline-block';
-            requestAnimationFrame(loop);
+        function createBlood(x, y) {
+            for(let i=0; i<25; i++) {
+                particles.push({
+                    x: x, y: y, 
+                    vx: (Math.random()-0.5)*0.2, vy: (Math.random()-0.5)*0.2,
+                    life: 30 + Math.random()*30, size: 2 + Math.random()*4
+                });
+            }
         }
 
-        function pauseGame() { gameRunning = false; showScreen('menu'); if(document.pointerLockElement) document.exitPointerLock(); }
-        function resumeGame() { showScreen('none'); gameRunning = true; if(!isMobile) canvas.requestPointerLock(); }
-
-        function shoot() {
-            const wep = weaponTypes[currentWepIdx];
-            if (ammo <= 0 || Date.now() - lastShotTime < (wep.auto ? 100 : 300)) return;
-            playSfx('shoot'); ammo--; flash = 3; lastShotTime = Date.now(); 
-            trackAch('shot', 1);
-
-            let nearestEnemy = null;
-            let minDist = 10;
-
-            enemies.forEach(en => {
-                if (!en.alive) return;
-                let ang = Math.atan2(en.y - player.y, en.x - player.x) - player.dir;
-                while (ang < -Math.PI) ang += Math.PI * 2; 
-                while (ang > Math.PI) ang -= Math.PI * 2;
-                let dist = Math.hypot(en.x - player.x, en.y - player.y);
-                
-                if (Math.abs(ang) < wep.spread && dist < minDist) {
-                    nearestEnemy = en;
-                    minDist = dist;
-                }
+        function checkAchievements() {
+            let changed = false;
+            allAchievements.forEach(a => {
+                if(a.unlocked) return;
+                if(a.id <= 30 && stats.totalKills >= a.id*10) a.unlocked = true;
+                if(a.id > 30 && a.id <= 60 && currentFloor >= (a.id-30)) a.unlocked = true;
+                if(a.unlocked) changed = true;
             });
-
-            if (nearestEnemy) {
-                nearestEnemy.alive = false; 
-                enemiesKilled++; 
-                trackAch('kill', 1);
-                trackAch('streak', 1);
-                if (Math.random() > 0.6) {
-                    items.push({x: nearestEnemy.x, y: nearestEnemy.y, type: Math.random() > 0.5 ? 'ammo' : 'medkit'});
-                }
-            }
-            updateUI();
+            if(changed) localStorage.setItem('achievements_furry', JSON.stringify(allAchievements.filter(a=>a.unlocked).map(a=>a.id)));
         }
 
-        function reload() {
-            let take = Math.min(weaponTypes[currentWepIdx].clip - ammo, reserveAmmo);
-            if(take > 0) { 
-                ammo += take; reserveAmmo -= take; playSfx('reload'); updateUI(); 
-                trackAch('reload', 1);
-            }
+        function updateSettings() {
+            settings.sensitivity = parseFloat(document.getElementById('set-sens').value);
+            settings.volume = parseFloat(document.getElementById('set-vol').value);
+        }
+
+        function initAchievementsMenu() {
+            const container = document.getElementById('ach-container');
+            container.innerHTML = '';
+            allAchievements.forEach(a => {
+                const div = document.createElement('div');
+                div.className = `ach-item ${a.unlocked ? 'ach-unlocked' : ''}`;
+                div.innerText = a.label;
+                container.appendChild(div);
+            });
+        }
+
+        function nextFloor() {
+            currentFloor++;
+            enemiesKilled = 0;
+            player.health = Math.min(100, player.health + 20);
+            const ann = document.getElementById('floor-announcement');
+            ann.innerText = "ЭТАЖ " + currentFloor;
+            ann.style.display = 'block';
+            setTimeout(() => ann.style.display = 'none', 2000);
+            enemies = [];
+            checkAchievements();
+            updateUI();
         }
 
         function update() {
             if (!gameRunning) return;
-            if (conn && conn.open) conn.send({ type: 'pos', x: player.x, y: player.y });
-            timeLeft -= 1/60;
-            trackAch('time', 1/60);
+            if(keys['KeyR']) reload();
 
-            let mx = 0, my = 0;
+            let mx = 0, my = 0, moveSpeed = 0.08;
             if (isMobile) {
-                mx = (-joyPos.y * Math.cos(player.dir) + joyPos.x * Math.cos(player.dir + 1.57)) * 0.1;
-                my = (-joyPos.y * Math.sin(player.dir) + joyPos.x * Math.sin(player.dir + 1.57)) * 0.1;
+                mx = (-joyPos.y * Math.cos(player.dir) + joyPos.x * Math.cos(player.dir + 1.57)) * moveSpeed;
+                my = (-joyPos.y * Math.sin(player.dir) + joyPos.x * Math.sin(player.dir + 1.57)) * moveSpeed;
             } else {
-                if (keys['KeyW']) { mx += Math.cos(player.dir) * 0.1; my += Math.sin(player.dir) * 0.1; }
-                if (keys['KeyS']) { mx -= Math.cos(player.dir) * 0.1; my -= Math.sin(player.dir) * 0.1; }
-                if (keys['KeyA']) { mx += Math.cos(player.dir - 1.57) * 0.1; my += Math.sin(player.dir - 1.57) * 0.1; }
-                if (keys['KeyD']) { mx += Math.cos(player.dir + 1.57) * 0.1; my += Math.sin(player.dir + 1.57) * 0.1; }
+                if (keys['KeyW']) { mx += Math.cos(player.dir) * moveSpeed; my += Math.sin(player.dir) * moveSpeed; }
+                if (keys['KeyS']) { mx -= Math.cos(player.dir) * moveSpeed; my -= Math.sin(player.dir) * moveSpeed; }
+                if (keys['KeyA']) { mx += Math.cos(player.dir - 1.57) * moveSpeed; my += Math.sin(player.dir - 1.57) * moveSpeed; }
+                if (keys['KeyD']) { mx += Math.cos(player.dir + 1.57) * moveSpeed; my += Math.sin(player.dir + 1.57) * moveSpeed; }
             }
-            if (map[Math.floor(player.y)][Math.floor(player.x + mx * 2)] === 0) player.x += mx;
-            if (map[Math.floor(player.y + my * 2)][Math.floor(player.x)] === 0) player.y += my;
+            if (currentMap[Math.floor(player.y)][Math.floor(player.x + mx * 1.5)] === 0) player.x += mx;
+            if (currentMap[Math.floor(player.y + my * 1.5)][Math.floor(player.x)] === 0) player.y += my;
 
-            items.forEach((it, i) => {
-                if (!it.collected && Math.hypot(it.x - player.x, it.y - player.y) < 0.5) {
-                    it.collected = true;
-                    if (it.type === 'medkit') { player.health = Math.min(100, player.health + 20); trackAch('heal', 1); }
-                    else { reserveAmmo += 20; trackAch('ammo', 1); }
-                    updateUI();
+            let now = Date.now();
+            enemies.forEach(en => {
+                if (!en.alive) return;
+                let d = Math.hypot(player.x - en.x, player.y - en.y);
+                if (d < 0.6) { 
+                    if (now - lastHitTime > 1000) {
+                        player.health -= 20;
+                        lastHitTime = now;
+                        document.getElementById('blood-overlay').style.opacity = 1;
+                        setTimeout(() => document.getElementById('blood-overlay').style.opacity = 0, 150);
+                    }
+                } else if (d < 10) {
+                    en.x += (player.x - en.x)/d * 0.03;
+                    en.y += (player.y - en.y)/d * 0.03;
+                }
+            });
+
+            particles.forEach((p, i) => {
+                p.x += p.vx; p.y += p.vy; p.life--;
+                if(p.life <= 0) particles.splice(i, 1);
+            });
+
+            if (Math.random() < 0.03 && enemies.filter(e=>e.alive).length < 5 + currentFloor) {
+                let rx = Math.random()*(currentMap[0].length-2)+1, ry = Math.random()*(currentMap.length-2)+1;
+                if(currentMap[Math.floor(ry)][Math.floor(rx)] === 0) enemies.push({x:rx, y:ry, alive:true, bob:0});
+            }
+
+            if (player.health <= 0) {
+                player.health = 0; gameRunning = false;
+                document.getElementById('final-stats').innerText = `УБИТО: ${stats.totalKills}`;
+                showScreen('game-over'); document.exitPointerLock();
+            }
+
+            if (enemiesKilled >= 10 + currentFloor * 2) nextFloor();
+            if(flash > 0) flash--;
+            updateUI();
+        }
+
+        function drawWeapon() {
+            const wep = weaponTypes[currentWepIdx];
+            const bob = Math.sin(Date.now()*0.005) * 2;
+            const recoil = flash * 15;
+            
+            ctx.save();
+            ctx.translate(screenWidth/2 + 40, screenHeight - 60 + bob - recoil);
+            
+            // Рука
+            ctx.fillStyle = "#d2b48c";
+            ctx.fillRect(20, 20, 50, 80);
+            
+            // Ствол
+            ctx.fillStyle = wep.color;
+            ctx.fillRect(-60, 0, 80, 25);
+            ctx.fillStyle = "#222";
+            ctx.fillRect(-65, 5, 5, 15);
+            
+            // Детали скина
+            ctx.fillStyle = wep.accent;
+            ctx.fillRect(-40, 2, 40, 4);
+            ctx.fillRect(-40, 19, 40, 4);
+            
+            // Затвор/Магазин
+            ctx.fillStyle = "#333";
+            ctx.fillRect(-10, -5, 20, 15);
+            
+            ctx.restore();
+        }
+
+        function draw() {
+            ctx.fillStyle = "#111"; ctx.fillRect(0,0,screenWidth,screenHeight);
+            let zBuf = new Array(screenWidth);
+            
+            for (let i = 0; i < screenWidth; i++) {
+                let ang = (player.dir - 0.4) + (i / screenWidth) * 0.8;
+                let d = 0, hit = 0;
+                while (hit === 0 && d < 12) {
+                    d += 0.05;
+                    let tx = Math.floor(player.x + Math.cos(ang)*d), ty = Math.floor(player.y + Math.sin(ang)*d);
+                    if (ty < 0 || ty >= currentMap.length || tx < 0 || tx >= currentMap[0].length) hit = 1; else hit = currentMap[ty][tx];
+                }
+                zBuf[i] = d;
+                let h = screenHeight / (d * Math.cos(ang-player.dir));
+                let lum = 150 / (1 + d * 0.5);
+                ctx.fillStyle = `rgb(${lum},0,0)`;
+                ctx.fillRect(i, screenHeight/2 - h/2, 1, h);
+            }
+
+            // Рендер частиц крови
+            particles.forEach(p => {
+                let dx = p.x - player.x, dy = p.y - player.y, dist = Math.hypot(dx,dy);
+                let ang = Math.atan2(dy, dx) - player.dir;
+                while(ang < -Math.PI) ang += Math.PI*2; while(ang > Math.PI) ang -= Math.PI*2;
+                if(Math.abs(ang) < 0.8 && dist > 0.1 && zBuf[Math.floor((ang/0.8+0.5)*screenWidth)] > dist) {
+                    let s = (p.size * 10) / dist;
+                    let sx = (ang/0.8 + 0.5) * screenWidth;
+                    ctx.fillStyle = `rgba(200, 0, 0, ${p.life/60})`;
+                    ctx.fillRect(sx, screenHeight/2, s, s);
                 }
             });
 
             enemies.forEach(en => {
-                if (!en.alive) return;
-                let d = Math.hypot(player.x - en.x, player.y - en.y);
-                if (d < 0.5) { player.health -= 0.5; if(Math.random()<0.1) playSfx('hurt'); }
-                else if (d < 7) { en.x += (player.x - en.x)/d * 0.03; en.y += (player.y - en.y)/d * 0.03; }
-            });
-
-            if (Math.random() < 0.02 && enemies.filter(e=>e.alive).length < 8) {
-                let rx = Math.random()*(mapW-2)+1, ry = Math.random()*(mapH-2)+1;
-                if(map[Math.floor(ry)][Math.floor(rx)] === 0) enemies.push({x:rx, y:ry, alive:true});
-            }
-            if(flash > 0) flash--;
-            if(player.health <= 0 || timeLeft <= 0) { 
-                gameRunning = false; trackAch('die', 1); trackAch('streak', 0, true); showScreen('game-over'); 
-            }
-            if(enemiesKilled >= 15) { 
-                gameRunning = false; trackAch('win', 1); showScreen('victory-screen'); 
-            }
-            if(!isMobile && keys['Space']) shoot();
-            if(isMobile && joyPos.shooting) shoot();
-        }
-
-        function draw() {
-            ctx.fillStyle = "#200"; ctx.fillRect(0,0,screenWidth,screenHeight/2);
-            ctx.fillStyle = "#111"; ctx.fillRect(0,screenHeight/2,screenWidth,screenHeight/2);
-            let zBuf = new Array(screenWidth);
-            for (let i = 0; i < screenWidth; i++) {
-                let ang = (player.dir - 0.5) + (i / screenWidth), d = 0, hit = 0;
-                while (hit === 0 && d < 15) {
-                    d += 0.05;
-                    let tx = Math.floor(player.x + Math.cos(ang)*d), ty = Math.floor(player.y + Math.sin(ang)*d);
-                    if (tx < 0 || tx >= mapW || ty < 0 || ty >= mapH) hit = 1; else hit = map[ty][tx];
-                }
-                zBuf[i] = d;
-                let h = screenHeight / (d * Math.cos(ang-player.dir)), c = 150 / (1 + d*0.2);
-                ctx.fillStyle = hit === 1 ? `rgb(${c},0,0)` : `rgb(0,0,${c})`;
-                ctx.fillRect(i, screenHeight/2 - h/2, 1, h);
-            }
-            
-            let sprites = [];
-            enemies.forEach(e => { if(e.alive) sprites.push({x:e.x, y:e.y, type:'en'})});
-            items.forEach(it => { if(!it.collected) sprites.push({x:it.x, y:it.y, type:it.type})});
-            if(otherPlayer.active) sprites.push({x:otherPlayer.x, y:otherPlayer.y, type:'p2'});
-            
-            sprites.sort((a,b)=>Math.hypot(b.x-player.x, b.y-player.y)-Math.hypot(a.x-player.x, a.y-player.y));
-            sprites.forEach(s => {
-                let dx = s.x - player.x, dy = s.y - player.y, dist = Math.hypot(dx,dy);
+                if(!en.alive) return;
+                en.bob += 0.1;
+                let dx = en.x - player.x, dy = en.y - player.y, dist = Math.hypot(dx,dy);
                 let ang = Math.atan2(dy, dx) - player.dir;
                 while(ang < -Math.PI) ang += Math.PI*2; while(ang > Math.PI) ang -= Math.PI*2;
-                if(Math.abs(ang) < 1 && dist > 0.3) {
-                    let sx = (ang + 0.5) * screenWidth, h = screenHeight/dist, w = h;
-                    if(zBuf[Math.floor(sx)] > dist) {
-                        if(s.type === 'en') {
-                             ctx.drawImage(furrySprite, sx - w/2, screenHeight/2 - h/2, w, h);
-                        } else {
-                             ctx.fillStyle = s.type === 'p2' ? 'blue' : 'yellow';
-                             ctx.fillRect(sx - w/4, screenHeight/2, w/2, h/2);
-                        }
+                if(Math.abs(ang) < 0.8 && dist > 0.2) {
+                    let h = screenHeight/dist;
+                    let sx = (ang/0.8 + 0.5) * screenWidth - h/2;
+                    if(zBuf[Math.floor(sx + h/2)] > dist) {
+                        let bob = Math.sin(en.bob) * 5;
+                        try { ctx.drawImage(furrySprite, sx, screenHeight/2 - h/2 + bob, h, h); } 
+                        catch(e) { ctx.fillStyle = "white"; ctx.fillRect(sx, screenHeight/2 - h/2, h/2, h/2); }
                     }
                 }
             });
-            if(flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash*0.2})`; ctx.fillRect(0,0,screenWidth,screenHeight); }
+
+            if(flash > 0) { ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.fillRect(0,0,screenWidth,screenHeight); }
+            drawWeapon();
+        }
+
+        function shoot() {
+            if (ammo <= 0) { if(reserveAmmo > 0) reload(); return; }
+            ammo--; flash = 4;
+            const wep = weaponTypes[currentWepIdx];
+            enemies.forEach(en => {
+                if (!en.alive) return;
+                let ang = Math.atan2(en.y - player.y, en.x - player.x) - player.dir;
+                while (ang < -Math.PI) ang += Math.PI * 2; while (ang > Math.PI) ang -= Math.PI * 2;
+                let d = Math.hypot(en.x - player.x, en.y - player.y);
+                if (Math.abs(ang) < wep.spread && d < 8) { 
+                    en.alive = false; enemiesKilled++; stats.totalKills++;
+                    createBlood(en.x, en.y);
+                    if(Math.random() > 0.6) reserveAmmo += 2;
+                    checkAchievements();
+                }
+            });
+            updateUI();
+        }
+
+        function reload() {
+            const wep = weaponTypes[currentWepIdx];
+            if (ammo < wep.clip && reserveAmmo > 0) {
+                let needed = wep.clip - ammo;
+                let take = Math.min(needed, reserveAmmo);
+                ammo += take; reserveAmmo -= take;
+                updateUI();
+            }
+        }
+
+        function startGame(mode) {
+            isMobile = mode === 'mobile'; 
+            showScreen('none');
+            if(isMobile) {
+                document.getElementById('joystick-container').style.display = 'block';
+                ['shoot-btn','reload-btn','mobile-menu-btn'].forEach(id=>document.getElementById(id).style.display='flex');
+                setupMobile();
+            } else canvas.requestPointerLock();
+            gameRunning = true; loop();
+        }
+
+        function loop() { if(gameRunning) { update(); draw(); requestAnimationFrame(loop); } }
+
+        function updateUI() {
+            document.getElementById('health-fill').style.width = player.health + "%";
+            document.getElementById('ammo-display').innerText = `AMMO: ${ammo}/${reserveAmmo} | KILLS: ${enemiesKilled}`;
+            document.getElementById('floor-display').innerText = `FLOOR: ${currentFloor}`;
         }
 
         function showScreen(id) {
@@ -426,56 +417,34 @@
             if(id !== 'none') document.getElementById(id).style.display = 'flex';
         }
 
-        function selectWeapon(idx) {
-            currentWepIdx = idx; ammo = weaponTypes[idx].clip; reserveAmmo = weaponTypes[idx].res;
-            document.querySelectorAll('.btn-weapon').forEach((b, i) => b.classList.toggle('selected-wep', i === idx));
+        function selectWeapon(i) {
+            currentWepIdx = i; 
+            ammo = weaponTypes[i].clip;
+            reserveAmmo = weaponTypes[i].reserve;
+            document.querySelectorAll('.btn-weapon').forEach((b,idx)=>b.classList.toggle('selected-wep', i===idx));
         }
 
-        function updateUI() {
-            document.getElementById('ammo-display').innerText = `AMMO: ${ammo}/${reserveAmmo} | KILLS: ${enemiesKilled}/15`;
-            document.getElementById('health-fill').style.width = player.health + "%";
-            let m = Math.floor(timeLeft/60), s = Math.floor(timeLeft%60);
-            document.getElementById('timer-display').innerText = `TIME: ${m}:${s<10?'0'+s:s}`;
-        }
-
-        function setupMobileControls() {
+        function setupMobile() {
             const joy = document.getElementById('joystick-container'), stick = document.getElementById('joystick-stick');
-            window.addEventListener('touchstart', e => { for(let t of e.changedTouches) if(t.clientX > window.innerWidth/2) lastTouchX = t.clientX; });
             window.addEventListener('touchmove', e => {
-                e.preventDefault();
                 for(let t of e.touches) {
                     if(t.clientX < window.innerWidth/2) {
                         let r = joy.getBoundingClientRect(), dx = t.clientX-(r.left+r.width/2), dy = t.clientY-(r.top+r.height/2);
-                        let d = Math.min(60, Math.hypot(dx,dy)), ang = Math.atan2(dy,dx);
-                        joyPos.x = (Math.cos(ang)*d)/60; joyPos.y = (Math.sin(ang)*d)/60;
-                        stick.style.transform = `translate(calc(-50% + ${joyPos.x*60}px), calc(-50% + ${joyPos.y*60}px))`;
-                    } else if(lastTouchX !== null) { player.dir += (t.clientX - lastTouchX) * 0.005 * settings.sensitivity; lastTouchX = t.clientX; }
+                        let d = Math.min(50, Math.hypot(dx,dy)), a = Math.atan2(dy,dx);
+                        joyPos.x = Math.cos(a)*(d/50); joyPos.y = Math.sin(a)*(d/50);
+                        stick.style.transform = `translate(calc(-50% + ${joyPos.x*50}px), calc(-50% + ${joyPos.y*50}px))`;
+                    } else { player.dir += (t.clientX - (window.innerWidth/2)) * 0.0001 * settings.sensitivity; }
                 }
-            }, {passive:false});
-            window.addEventListener('touchend', () => { joyPos = {x:0,y:0}; stick.style.transform='translate(-50%,-50%)'; lastTouchX=null; });
-            document.getElementById('shoot-btn').ontouchstart = () => { joyPos.shooting = true; shoot(); };
-            document.getElementById('shoot-btn').ontouchend = () => { joyPos.shooting = false; };
-            document.getElementById('reload-btn').onclick = reload;
+            }, {passive: false});
+            window.addEventListener('touchend', () => { joyPos = {x:0,y:0}; stick.style.transform='translate(-50%,-50%)'; });
+            document.getElementById('shoot-btn').ontouchstart = (e) => { e.preventDefault(); shoot(); };
+            document.getElementById('reload-btn').ontouchstart = (e) => { e.preventDefault(); reload(); };
         }
 
-        function toggleAchievements(show) {
-            if(show) {
-                showScreen('achievements-menu'); const cont = document.getElementById('ach-container'); cont.innerHTML = '';
-                let list = Object.values(achievements);
-                list.forEach(a => {
-                    cont.innerHTML += `<div style="padding:8px; border-bottom:1px solid #222; color:${a.unlocked?'#0f0':'#555'}">
-                        ${a.icon} <b>${a.name}</b><br><small>${a.desc} (${Math.floor(a.current)}/${a.goal})</small>
-                    </div>`;
-                });
-            } else showScreen('menu');
-        }
-
-        window.addEventListener('keydown', e => { keys[e.code] = true; if(e.code==='KeyR') reload(); if(e.code==='Escape') pauseGame(); });
+        window.addEventListener('keydown', e => { keys[e.code] = true; });
         window.addEventListener('keyup', e => keys[e.code] = false);
-        window.addEventListener('mousemove', e => { if(document.pointerLockElement) player.dir += e.movementX * 0.002 * settings.sensitivity; });
+        window.addEventListener('mousemove', e => { if(document.pointerLockElement) player.dir += e.movementX * 0.003 * settings.sensitivity; });
         window.addEventListener('mousedown', () => { if(gameRunning && !isMobile) shoot(); });
-
-        function loop() { update(); draw(); requestAnimationFrame(loop); }
     </script>
 </body>
 </html>
